@@ -157,9 +157,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     onUpdateSellers(prev =>
       prev.map(s => {
         if (s.id === sellerId) {
-          const nextTier = s.tier === 'Tier A' ? 'Tier B' : 'Tier A';
+          const nextTier: 'Tier A' | 'Tier B' = s.tier === 'Tier A' ? 'Tier B' : 'Tier A';
           if (showToast) showToast(`${s.name} switched to ${nextTier}`, 'success');
-          const updated = { ...s, tier: nextTier };
+          const updated: Seller = { ...s, tier: nextTier };
           dbUpsertSeller(updated);
           return updated;
         }

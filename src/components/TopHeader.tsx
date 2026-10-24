@@ -13,7 +13,7 @@ import {
 import { Seller, Assistant, StepType } from '../types';
 
 interface TopHeaderProps {
-  currentStep: StepType;
+  currentStep: StepType | string;
   currentSeller: Seller;
   currentAssistant: Assistant;
   authenticatedRole: 'admin' | 'assistant' | null;

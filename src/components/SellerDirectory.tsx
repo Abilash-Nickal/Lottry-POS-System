@@ -51,9 +51,9 @@ export const SellerDirectory: React.FC<SellerDirectoryProps> = ({
     >
       
       {/* 1. TOP HEADER BAR */}
-      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-6">
-        {/* Left: Back button + Brand Pill + Route Terminal Tag + Field Rep */}
-        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+      <div className="shrink-0 flex items-center justify-between gap-3 pb-6">
+        {/* Left: Back button + Brand Pill */}
+        <div className="flex items-center gap-2.5 sm:gap-3">
           <button
             onClick={onBack}
             className="w-9 h-9 rounded-full bg-white hover:bg-[#FAF8F5] border border-[#E6DDD4] flex items-center justify-center transition-all shadow-xs cursor-pointer shrink-0"
@@ -74,24 +74,13 @@ export const SellerDirectory: React.FC<SellerDirectoryProps> = ({
               LankaLotto <span className="text-[#D64933] font-black">POS</span>
             </span>
           </div>
+        </div>
 
-          <span className="text-[10px] font-black uppercase tracking-wider text-[#D64933] bg-[#FAF0E9] border border-[#F4DEC9] px-2.5 py-1 rounded-full shadow-2xs">
-            Route Terminal
-          </span>
-
+        {/* Right Controls: Field Rep & Switch User */}
+        <div className="flex items-center gap-3 shrink-0">
           <span className="text-xs text-[#7F7266] font-medium">
             Field Rep: <strong className="text-[#1E1915] font-bold">{currentAssistant.name}</strong>
           </span>
-        </div>
-
-        {/* Right Controls: Route Badge & Switch User */}
-        <div className="flex items-center gap-2.5 shrink-0">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#E6DDD4] text-xs font-semibold text-[#6E645D] shadow-xs">
-            <MapPin className="w-3.5 h-3.5 text-[#D68A64]" />
-            <span>{currentAssistant.route}</span>
-            <span className="text-[#D5C9BD]">•</span>
-            <span className="text-[#9E2A1E] font-extrabold">{filteredSellers.length} Assigned</span>
-          </div>
 
           <button
             onClick={onSwitchUser || onBack}
@@ -175,11 +164,11 @@ export const SellerDirectory: React.FC<SellerDirectoryProps> = ({
       )}
 
       {/* 4. RETAILER CARDS LIST (SMOOTH INTERNAL SCROLL) */}
-      <div className="flex-1 min-h-0 overflow-y-auto space-y-3.5 pr-1.5 pb-6 custom-scrollbar">
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1.5 pb-6 custom-scrollbar">
         {filteredSellers.map((seller, index) => {
           const percent = Math.min(100, Math.round((seller.currentCredit / (seller.creditLimit || 1)) * 100));
           const availableCredit = Math.max(0, seller.creditLimit - seller.currentCredit);
-          const isSelected = activeCardId === seller.id || (!activeCardId && index === 2); // Default to 3rd card as highlighted in screenshot
+          const isSelected = activeCardId === seller.id || (!activeCardId && index === 0);
 
           return (
             <div
@@ -189,43 +178,29 @@ export const SellerDirectory: React.FC<SellerDirectoryProps> = ({
                 onSelectSeller(seller.id);
               }}
               onMouseEnter={() => setActiveCardId(seller.id)}
-              className={`p-4 sm:p-5 rounded-[22px] bg-white transition-all duration-200 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer shadow-xs ${
+              className={`p-3.5 sm:p-4 rounded-[22px] bg-white transition-all duration-150 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer shadow-xs ${
                 isSelected
-                  ? 'border-2 border-[#52B7E8] ring-2 ring-[#52B7E8]/20 shadow-md'
-                  : 'border border-[#E6DDD4] hover:border-[#D68A64] hover:shadow-sm'
+                  ? 'border-2 border-[#52B7E8]'
+                  : 'border border-[#E6DDD4] hover:border-[#D68A64]'
               }`}
             >
               {/* Left: Store Icon + Retailer Details */}
-              <div className="flex items-center gap-4 min-w-0">
-                <div className="w-12 h-12 rounded-2xl bg-[#FAF0E9] border border-[#F4DEC9] text-[#D68A64] flex items-center justify-center shrink-0 shadow-2xs">
-                  <Building2 className="w-5 h-5 text-[#D68A64]" />
+              <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
+                <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-[#FAF0E9] border border-[#F4DEC9] text-[#C25838] flex items-center justify-center shrink-0">
+                  <Building2 className="w-5 h-5 text-[#C25838]" />
                 </div>
 
                 <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-extrabold text-base sm:text-lg text-[#1E1915] truncate">
-                      {seller.name}
-                    </h3>
-                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-md bg-[#FAF0E9] text-[#7F7266] border border-[#F2DDD2]">
-                      {seller.tier === 'Tier A' ? 'Wholesale Tier A' : 'Retail Tier B'}
-                    </span>
-                    <span className="text-[11px] font-bold text-[#D68A64] flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#D68A64]" />
-                      {100 - percent}% Safe
-                    </span>
+                  <h3 className="font-bold text-base sm:text-lg text-[#1E1915] truncate">
+                    {seller.name}
+                  </h3>
+
+                  <div className="flex items-center gap-1.5 text-xs text-[#7F7266] mt-0.5">
+                    <MapPin className="w-3.5 h-3.5 text-[#C25838] shrink-0" />
+                    <span className="truncate">{seller.location}</span>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-[#7F7266] mt-1 font-medium">
-                    <span className="flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5 text-orange-500 shrink-0" />
-                      {seller.location}
-                    </span>
-                    <span>•</span>
-                    <span>Lic: LL-WHA-{seller.id.replace(/[^0-9]/g, '').padStart(4, '0')}</span>
-                    <span>•</span>
-                  </div>
-
-                  <span className="text-[11px] text-[#9F9184] block mt-0.5">
+                  <span className="text-[11px] text-[#A89C91] block mt-0.5">
                     Last order: Today, 08:30 AM
                   </span>
                 </div>
@@ -233,26 +208,25 @@ export const SellerDirectory: React.FC<SellerDirectoryProps> = ({
 
               {/* Right: Outstanding Credit Progress + Open POS Button */}
               <div className="flex items-center gap-5 sm:gap-7 shrink-0 self-end md:self-auto">
-                <div className="w-40 sm:w-56 space-y-1">
+                <div className="w-40 sm:w-56 space-y-1.5">
                   <div className="flex justify-between items-center text-[10px] font-bold">
                     <span className="text-[#8C827A] uppercase tracking-wider">
-                      Outstanding Credit
+                      OUTSTANDING
                     </span>
                     <span className="text-[#1E1915] font-mono">
                       LKR {formatLKR(seller.currentCredit).replace('LKR', '').trim()} / {(seller.creditLimit / 1000).toFixed(0)}k
                     </span>
                   </div>
 
-                  <div className="w-full bg-[#E6DDD4] h-1.5 rounded-full overflow-hidden">
+                  <div className="w-full bg-[#E8DFD5] h-1.5 rounded-full overflow-hidden">
                     <div
-                      className="h-full rounded-full bg-[#D68A64]"
+                      className="h-full rounded-full bg-[#C25838]"
                       style={{ width: `${percent}%` }}
                     />
                   </div>
 
-                  <div className="flex justify-between items-center text-[9px] font-bold text-[#7F7266]">
-                    <span>Available: LKR {(availableCredit / 1000).toFixed(1)}k</span>
-                    <span className="text-[#16A34A] font-bold">Zero Overdue</span>
+                  <div className="text-[10px] text-[#7F7266] font-medium">
+                    Available: LKR {(availableCredit / 1000).toFixed(1)}k
                   </div>
                 </div>
 
@@ -262,7 +236,7 @@ export const SellerDirectory: React.FC<SellerDirectoryProps> = ({
                     e.stopPropagation();
                     onSelectSeller(seller.id);
                   }}
-                  className="px-4 py-2.5 rounded-xl bg-[#FAF0E9] hover:bg-[#F5DEC9] text-[#C25838] hover:text-[#9E2A1E] border border-[#F4DEC9] font-extrabold text-xs sm:text-sm flex items-center gap-2 shadow-2xs transition-all cursor-pointer whitespace-nowrap"
+                  className="px-4 py-2.5 rounded-2xl bg-[#FAF0E9] hover:bg-[#F3E2D5] text-[#C25838] border border-[#ECD7C7] font-bold text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap"
                 >
                   <Store className="w-4 h-4 text-[#C25838]" />
                   <span>Open POS</span>
