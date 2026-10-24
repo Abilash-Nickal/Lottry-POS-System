@@ -102,10 +102,11 @@ export function usePOSState() {
     setCurrentStep('USER_LOGIN');
   };
 
-  // Flow 1: press admin -> direct access to admin Panel
+  // Flow 1: press admin -> opens login page for admin
   const handleSelectAdmin = () => {
-    setAuthenticatedRole('admin');
-    setCurrentStep('ADMIN_DASHBOARD');
+    setPendingUserRole('admin');
+    setPendingAssistantId(null);
+    setCurrentStep('USER_LOGIN');
   };
 
   // Flow 2: press distributors -> select distributors -> login -> panel
@@ -120,11 +121,7 @@ export function usePOSState() {
   };
 
   const handleLoginBack = () => {
-    if (pendingUserRole === 'admin') {
-      setCurrentStep('USER_SELECT');
-    } else {
-      setCurrentStep('DISTRIBUTOR_SELECT');
-    }
+    setCurrentStep('USER_SELECT');
   };
 
   const handleLoginSuccess = (role: 'admin' | 'assistant', assistantId?: string) => {

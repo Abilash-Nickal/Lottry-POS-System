@@ -94,9 +94,9 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
   const handleUnlockClick = () => {
     if (authMode === 'pin') {
       if (pin.length === 0) {
-        // Auto-fill default demo PIN and unlock
-        setPin(currentAst?.defaultPass || '1234');
-        verifyPin(currentAst?.defaultPass || '1234');
+        const targetPin = pendingUserRole === 'admin' ? '1234' : (currentAst?.defaultPass || '1234');
+        setPin(targetPin);
+        verifyPin(targetPin);
       } else {
         verifyPin(pin);
       }
