@@ -455,7 +455,7 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
           }`}
         >
           <ShoppingBag className="w-3.5 h-3.5" />
-          <span>3.1 Sale & Dispatch</span>
+          <span>Sale & Dispatch</span>
           {activeAction === '3.1' && (
             <span className="bg-white/20 text-white text-[8px] font-black px-1.5 py-0.2 rounded uppercase ml-1">
               Active
@@ -473,7 +473,7 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
           }`}
         >
           <RotateCcw className="w-3.5 h-3.5" />
-          <span>3.2 Pack Return</span>
+          <span>Pack Return</span>
           {activeAction === '3.2' && (
             <span className="bg-white/20 text-white text-[8px] font-black px-1.5 py-0.2 rounded uppercase ml-1">
               Active
@@ -491,7 +491,7 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
           }`}
         >
           <Trophy className="w-3.5 h-3.5" />
-          <span>3.3 Winning Tickets</span>
+          <span>Winning Tickets</span>
           {activeAction === '3.3' && (
             <span className="bg-white/20 text-white text-[8px] font-black px-1.5 py-0.2 rounded uppercase ml-1">
               Active
@@ -509,7 +509,7 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
           }`}
         >
           <Ticket className="w-3.5 h-3.5" />
-          <span>3.4 Non-Winning Audit</span>
+          <span>Non-Winning Audit</span>
           {activeAction === '3.4' && (
             <span className="bg-white/20 text-white text-[8px] font-black px-1.5 py-0.2 rounded uppercase ml-1">
               Active
@@ -527,7 +527,7 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
           }`}
         >
           <Banknote className="w-3.5 h-3.5" />
-          <span>3.5 Pay by Cash</span>
+          <span>Pay by Cash</span>
           {activeAction === '3.5' && (
             <span className="bg-white/20 text-white text-[8px] font-black px-1.5 py-0.2 rounded uppercase ml-1">
               Active
@@ -557,7 +557,7 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
                     </div>
                     <div>
                       <h4 className="text-base font-black text-[#26201D]">
-                        Action 3.1 • Ticket Sale & Dispatch
+                        Ticket Sale & Dispatch
                       </h4>
                       <p className="text-[11px] text-[#7F7266] font-medium">
                         Allocate daily lottery draw packs & instant scratch cards for retailer distribution

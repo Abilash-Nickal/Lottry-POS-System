@@ -200,9 +200,7 @@ export const SellerDirectory: React.FC<SellerDirectoryProps> = ({
                     <span className="truncate">{seller.location}</span>
                   </div>
 
-                  <span className="text-[11px] text-[#A89C91] block mt-0.5">
-                    Last order: Today, 08:30 AM
-                  </span>
+
                 </div>
               </div>
 

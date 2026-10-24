@@ -1,14 +1,9 @@
 import React from 'react';
 import { 
   Search, 
-  Bell, 
-  MessageSquare, 
   Store, 
   Printer, 
-  ChevronDown, 
-  ShieldCheck, 
-  Sparkles,
-  SlidersHorizontal
+  ChevronDown
 } from 'lucide-react';
 import { Seller, Assistant, StepType } from '../types';
 
@@ -108,30 +103,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           </button>
         )}
 
-        {/* Activity & Notification Badges (Hidden for Admin / Dashboard) */}
-        {authenticatedRole !== 'admin' && currentStep !== 'ADMIN_DASHBOARD' && (
-          <>
-            {/* Activity / Chat icon with count badge */}
-            <div className="relative cursor-pointer">
-              <div className="w-8 h-8 rounded-full bg-[#FAF7F4] hover:bg-[#F2ECE4] border border-[#E6DDD4] flex items-center justify-center text-[#26201D] transition-all shadow-xs">
-                <MessageSquare className="w-3.5 h-3.5" />
-              </div>
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#D64933] text-white text-[9px] font-bold flex items-center justify-center shadow-xs">
-                18
-              </span>
-            </div>
 
-            {/* Notification Bell with count badge */}
-            <div className="relative cursor-pointer">
-              <div className="w-8 h-8 rounded-full bg-[#FAF7F4] hover:bg-[#F2ECE4] border border-[#E6DDD4] flex items-center justify-center text-[#26201D] transition-all shadow-xs">
-                <Bell className="w-3.5 h-3.5" />
-              </div>
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-orange-500 text-white text-[9px] font-bold flex items-center justify-center shadow-xs">
-                52
-              </span>
-            </div>
-          </>
-        )}
 
         {/* User Profile Pill */}
         <div 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { 
-  LayoutDashboard, 
+  LayoutDashboard,
   Store, 
   ShoppingBag, 
   RotateCcw, 
@@ -8,15 +8,13 @@ import {
   FileText, 
   ShieldCheck, 
   LogOut, 
-  Settings,
-  Sparkles,
   ChevronRight,
   Ticket,
   Banknote,
   Tag,
   Users
 } from 'lucide-react';
-import { StepType, Assistant, ActionModalType } from '../types';
+import { StepType, Assistant } from '../types';
 import { COMPANY_CONFIG } from '../constants/companyConfig';
 
 export type AdminTabType = 'overview' | 'pricing' | 'sellers' | 'assistants' | 'ledger';
@@ -78,9 +76,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Navigation Menu */}
         <nav className="space-y-1.5">
-          <div className="text-[11px] font-bold uppercase tracking-widest text-gray-400 px-4 mb-2">
-            Main Operations
-          </div>
 
           {/* 1. Admin Section Navigation Items (Moved to Left Panel as requested) */}
           {authenticatedRole === 'admin' || currentStep === 'ADMIN_DASHBOARD' ? (
@@ -119,7 +114,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               >
                 <div className="flex items-center gap-3">
                   <Store className={`w-4 h-4 ${isAdmin && activeAdminTab === 'sellers' ? 'text-white' : 'text-gray-400 group-hover:text-orange-500'}`} />
-                  <span>1. Sellers Management</span>
+                  <span>Sellers Management</span>
                 </div>
                 {isAdmin && activeAdminTab === 'sellers' && <ChevronRight className="w-4 h-4 text-white" />}
               </button>
@@ -138,19 +133,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
               >
                 <div className="flex items-center gap-3">
                   <Users className={`w-4 h-4 ${isAdmin && activeAdminTab === 'assistants' ? 'text-white' : 'text-gray-400 group-hover:text-orange-500'}`} />
-                  <span>2. Assistant Accounts</span>
+                  <span>Assistant Accounts</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                    isAdmin && activeAdminTab === 'assistants' ? 'bg-white/20 text-white' : 'bg-orange-100 text-orange-700 border border-orange-200'
-                  }`}>
-                    4
-                  </span>
                   {isAdmin && activeAdminTab === 'assistants' && <ChevronRight className="w-4 h-4 text-white" />}
                 </div>
               </button>
 
-              {/* 3. Ticket Catalog & Tier Pricing */}
+              {/* Ticket Catalog & Tier Pricing */}
               <button
                 onClick={() => {
                   if (onSelectAdminTab) onSelectAdminTab('pricing');
@@ -164,7 +154,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               >
                 <div className="flex items-center gap-3">
                   <Tag className={`w-4 h-4 ${isAdmin && activeAdminTab === 'pricing' ? 'text-white' : 'text-gray-400 group-hover:text-orange-500'}`} />
-                  <span>3. Ticket Catalog & Pricing</span>
+                  <span>Ticket Catalog & Pricing</span>
                 </div>
                 {isAdmin && activeAdminTab === 'pricing' && <ChevronRight className="w-4 h-4 text-white" />}
               </button>
@@ -190,21 +180,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           ) : (
             <>
-              {/* POS Terminal Operations (Only in Field Assistant Terminal) */}
-              <button
-                onClick={() => setCurrentStep('SELLER_WORKSPACE')}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-semibold transition-all duration-200 group ${
-                  isWorkspace && (!activeActionId || activeActionId === '3.1')
-                    ? 'neon-gradient-btn text-white font-bold shadow-md shadow-orange-500/25 translate-x-1'
-                    : 'text-gray-600 hover:bg-orange-50/80 hover:text-orange-600'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <LayoutDashboard className={`w-4 h-4 ${isWorkspace && (!activeActionId || activeActionId === '3.1') ? 'text-white' : 'text-gray-400 group-hover:text-orange-500'}`} />
-                  <span>Retailer POS Terminal</span>
-                </div>
-                {isWorkspace && (!activeActionId || activeActionId === '3.1') && <ChevronRight className="w-4 h-4 text-white" />}
-              </button>
 
               {/* 3.1 Sale & Dispatch */}
               <button
@@ -222,14 +197,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <ShoppingBag className={`w-4 h-4 ${isWorkspace && activeActionId === '3.1' ? 'text-white' : 'text-gray-400 group-hover:text-orange-500'} group-hover:scale-110 transition-transform`} />
                   <span>Sale & Dispatch</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    isWorkspace && activeActionId === '3.1' ? 'bg-white/20 text-white' : 'bg-orange-50 text-orange-600 border border-orange-200'
-                  }`}>
-                    3.1
-                  </span>
-                  {isWorkspace && activeActionId === '3.1' && <ChevronRight className="w-3.5 h-3.5 text-white" />}
-                </div>
+                {isWorkspace && activeActionId === '3.1' && <ChevronRight className="w-3.5 h-3.5 text-white" />}
               </button>
 
               {/* 3.2 Pack Return */}
@@ -248,14 +216,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <RotateCcw className={`w-4 h-4 ${isWorkspace && activeActionId === '3.2' ? 'text-white' : 'text-gray-400 group-hover:text-cyan-600'} group-hover:scale-110 transition-transform`} />
                   <span>Pack Return</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    isWorkspace && activeActionId === '3.2' ? 'bg-white/20 text-white' : 'bg-cyan-50 text-cyan-700 border border-cyan-200'
-                  }`}>
-                    3.2
-                  </span>
-                  {isWorkspace && activeActionId === '3.2' && <ChevronRight className="w-3.5 h-3.5 text-white" />}
-                </div>
+                {isWorkspace && activeActionId === '3.2' && <ChevronRight className="w-3.5 h-3.5 text-white" />}
               </button>
 
               {/* 3.3 Winning Tickets */}
@@ -274,14 +235,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <Trophy className={`w-4 h-4 ${isWorkspace && activeActionId === '3.3' ? 'text-white' : 'text-gray-400 group-hover:text-orange-500'} group-hover:scale-110 transition-transform`} />
                   <span>Winning Tickets</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    isWorkspace && activeActionId === '3.3' ? 'bg-white/20 text-white' : 'bg-amber-50 text-amber-700 border border-amber-200'
-                  }`}>
-                    3.3
-                  </span>
-                  {isWorkspace && activeActionId === '3.3' && <ChevronRight className="w-3.5 h-3.5 text-white" />}
-                </div>
+                {isWorkspace && activeActionId === '3.3' && <ChevronRight className="w-3.5 h-3.5 text-white" />}
               </button>
 
               {/* 3.4 Non-Winning Stubs */}
@@ -300,14 +254,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <Ticket className={`w-4 h-4 ${isWorkspace && activeActionId === '3.4' ? 'text-white' : 'text-gray-400 group-hover:text-rose-500'} group-hover:scale-110 transition-transform`} />
                   <span>Non-Winning Stubs</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    isWorkspace && activeActionId === '3.4' ? 'bg-white/20 text-white' : 'bg-rose-50 text-rose-700 border border-rose-200'
-                  }`}>
-                    3.4
-                  </span>
-                  {isWorkspace && activeActionId === '3.4' && <ChevronRight className="w-3.5 h-3.5 text-white" />}
-                </div>
+                {isWorkspace && activeActionId === '3.4' && <ChevronRight className="w-3.5 h-3.5 text-white" />}
               </button>
 
               {/* 3.5 Pay by Cash */}
@@ -326,19 +273,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <Banknote className={`w-4 h-4 ${isWorkspace && activeActionId === '3.5' ? 'text-white' : 'text-gray-400 group-hover:text-emerald-600'} group-hover:scale-110 transition-transform`} />
                   <span>Pay by Cash</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    isWorkspace && activeActionId === '3.5' ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                  }`}>
-                    3.5
-                  </span>
-                  {isWorkspace && activeActionId === '3.5' && <ChevronRight className="w-3.5 h-3.5 text-white" />}
-                </div>
+                {isWorkspace && activeActionId === '3.5' && <ChevronRight className="w-3.5 h-3.5 text-white" />}
               </button>
             </>
           )}
 
-          {/* 6. Ledger Statements */}
+          {/* Ledger Statements */}
           <button
             onClick={() => {
               if (onOpenFinalReceipt) onOpenFinalReceipt();
