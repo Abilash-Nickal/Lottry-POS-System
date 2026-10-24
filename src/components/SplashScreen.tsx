@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, ArrowRight, ShieldCheck } from 'lucide-react';
-import { COMPANY_CONFIG } from '../constants/companyConfig';
 
 interface SplashScreenProps {
   onFinish: () => void;
@@ -8,20 +6,15 @@ interface SplashScreenProps {
 }
 
 /**
- * CASE 0: STARTUP SPLASH SCREEN / LOADING PAGE
- * 
- * Displays company branding & animated loader when the site/app loads.
- * Automatically transitions to User Selection once loading reaches 100%.
+ * STARTUP LOADING SCREEN
+ * Simple, elegant loading screen that transitions smoothly to User Selection.
  */
 export const SplashScreen: React.FC<SplashScreenProps> = ({ 
   onFinish,
-  durationMs = COMPANY_CONFIG.splash.durationMs
+  durationMs = 1200
 }) => {
   const [progress, setProgress] = useState(0);
-  const [currentStatusIndex, setCurrentStatusIndex] = useState(0);
   const [isFadingOut, setIsFadingOut] = useState(false);
-
-  const steps = COMPANY_CONFIG.splash.loadingSteps;
 
   useEffect(() => {
     const startTime = Date.now();
@@ -30,134 +23,67 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
       const rawPct = Math.min(100, Math.round((elapsed / durationMs) * 100));
       setProgress(rawPct);
 
-      // Determine matching step status text
-      const matchingIndex = steps.findIndex(s => rawPct <= s.progress);
-      if (matchingIndex !== -1) {
-        setCurrentStatusIndex(matchingIndex);
-      } else {
-        setCurrentStatusIndex(steps.length - 1);
-      }
-
       if (rawPct >= 100) {
         clearInterval(interval);
-        // Trigger smooth fadeout animation before switching screen
         setIsFadingOut(true);
         setTimeout(() => {
           onFinish();
-        }, 400); // 400ms exit fade
+        }, 300);
       }
-    }, 25);
+    }, 20);
 
     return () => clearInterval(interval);
-  }, [durationMs, onFinish, steps]);
-
-  const handleSkip = () => {
-    setIsFadingOut(true);
-    setTimeout(() => {
-      onFinish();
-    }, 200);
-  };
+  }, [durationMs, onFinish]);
 
   return (
     <div 
-      className={`fixed inset-0 z-50 flex flex-col items-center justify-between p-6 sm:p-12 bg-[#F8FAFC] text-gray-900 selection:bg-orange-500/20 selection:text-orange-950 transition-opacity duration-400 ${
+      className={`fixed inset-0 z-50 flex flex-col items-center justify-center p-6 bg-[#F7F4F0] text-[#1E1915] select-none transition-opacity duration-300 ${
         isFadingOut ? 'opacity-0 scale-98 pointer-events-none' : 'opacity-100 scale-100'
       }`}
+      style={{ fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" }}
     >
-      {/* Ambient background glow accents */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-orange-400/10 rounded-full blur-3xl pointer-events-none animate-pulse" />
-      <div className="absolute bottom-10 right-10 w-80 h-80 bg-amber-400/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute top-10 left-10 w-72 h-72 bg-orange-500/5 rounded-full blur-3xl pointer-events-none" />
-
-      {/* Top Header / Skip Button */}
-      <div className="w-full max-w-4xl flex items-center justify-between relative z-10">
-        <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
-          <span className="text-xs font-mono font-bold tracking-widest text-emerald-600 uppercase">
-            Terminal Boot • v1.0.0
-          </span>
-        </div>
-
-        <button
-          onClick={handleSkip}
-          className="group flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/80 hover:bg-white border border-gray-200/80 text-xs font-semibold text-gray-700 hover:text-gray-950 transition-all shadow-sm backdrop-blur-md"
-          title="Skip intro and proceed directly to user selection"
-        >
-          <span>Skip Intro</span>
-          <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform text-orange-500" />
-        </button>
-      </div>
-
-      {/* Main Center Content: Company Logo & Branding */}
-      <div className="relative z-10 flex flex-col items-center text-center max-w-md w-full p-8 rounded-3xl bg-white/80 backdrop-blur-xl border border-gray-200/90 shadow-xl shadow-orange-500/5 space-y-6">
+      {/* Centered Minimal Brand & Loader */}
+      <div className="flex flex-col items-center text-center space-y-5 animate-in fade-in zoom-in-95 duration-300">
         
-        {/* Animated Company Logo Badge */}
+        {/* Brand Icon */}
         <div className="relative">
-          {/* Radial pulse rings */}
-          <div className="absolute -inset-4 rounded-3xl bg-orange-500/20 blur-md animate-pulse" />
-          <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-orange-400 to-amber-500 opacity-60 blur-xs" />
-          
-          <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-gradient-to-tr from-orange-500 via-amber-500 to-orange-400 p-0.5 shadow-2xl shadow-orange-500/30 flex items-center justify-center">
-            <div className="w-full h-full rounded-[22px] bg-white flex flex-col items-center justify-center p-3 border border-orange-200/50 shadow-inner">
-              <span className="text-4xl sm:text-5xl drop-shadow-sm select-none transform hover:scale-110 transition-transform">
-                {COMPANY_CONFIG.splash.logoIcon}
-              </span>
-            </div>
+          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white border border-[#E6DDD4] shadow-xs flex items-center justify-center text-3xl sm:text-4xl">
+            🎟️
           </div>
+          {/* Subtle warm ring pulse */}
+          <div className="absolute -inset-1 rounded-2xl border border-[#C25838]/20 animate-pulse pointer-events-none" />
         </div>
 
-        {/* Company & System Titles */}
-        <div className="space-y-2">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-400/30 text-orange-600 text-[11px] font-bold tracking-wider uppercase">
-            <Sparkles className="w-3.5 h-3.5 text-orange-500" />
-            <span>{COMPANY_CONFIG.splash.badgeText}</span>
-          </div>
-
-          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-gray-900">
-            {COMPANY_CONFIG.shortName} <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-amber-500">POS</span>
+        {/* Brand Title */}
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1E1915] tracking-tight">
+            LankaLotto <span className="text-[#C25838]">POS</span>
           </h1>
-
-          <p className="text-xs sm:text-sm text-gray-600 font-semibold">
-            {COMPANY_CONFIG.companyName}
-          </p>
-
-          <p className="text-[11px] text-gray-500 max-w-xs mx-auto">
-            {COMPANY_CONFIG.tagline}
+          <p className="text-xs text-[#7F7266] font-medium">
+            Wholesale Lottery Distribution System
           </p>
         </div>
 
-        {/* Progress Bar & Status Text */}
-        <div className="w-full space-y-3 pt-2">
-          <div className="flex items-center justify-between text-xs font-mono text-gray-600">
-            <span className="flex items-center gap-1.5 font-medium text-gray-700">
-              <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
-              {steps[currentStatusIndex]?.text || 'Loading...'}
-            </span>
-            <span className="text-orange-600 font-black">{progress}%</span>
-          </div>
-
-          {/* Progress track */}
-          <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden p-0.5 border border-gray-200/80 shadow-inner">
+        {/* Minimal Progress Bar */}
+        <div className="w-48 sm:w-56 space-y-2 pt-1">
+          <div className="w-full bg-[#E6DDD4] h-1.5 rounded-full overflow-hidden">
             <div 
-              className="h-full bg-gradient-to-r from-orange-500 via-amber-500 to-orange-400 rounded-full transition-all duration-75 ease-out shadow-sm shadow-orange-500/30"
+              className="h-full bg-[#C25838] rounded-full transition-all duration-75 ease-out"
               style={{ width: `${progress}%` }}
             />
           </div>
+          <div className="flex justify-between items-center text-[10px] font-bold text-[#A89C91]">
+            <span>Loading...</span>
+            <span className="font-mono">{progress}%</span>
+          </div>
         </div>
 
       </div>
 
-      {/* Bottom Footer Info */}
-      <div className="relative z-10 text-center space-y-1">
-        <div className="flex items-center justify-center gap-2 text-[11px] font-semibold text-gray-600">
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-          <span>Encrypted Local Storage & Offline Field Resilient</span>
-        </div>
-        <p className="text-[10px] text-gray-500 font-mono">
-          {COMPANY_CONFIG.legalRegistration}
-        </p>
+      {/* Subtle bottom note */}
+      <div className="absolute bottom-6 text-center text-[11px] text-[#A89C91] font-medium">
+        Secure Terminal Access
       </div>
-
     </div>
   );
 };

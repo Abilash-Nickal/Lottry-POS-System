@@ -22,7 +22,7 @@ export const COMPANY_CONFIG = {
   // Start / Splash Loading Screen Configuration
   splash: {
     enabled: true,
-    durationMs: 2000, // Duration in milliseconds (2.0 seconds)
+    durationMs: 1200, // Fast and responsive loading screen (1.2 seconds)
     logoIcon: '🎟️',
     badgeText: 'Official Distributor Terminal',
     loadingSteps: [
