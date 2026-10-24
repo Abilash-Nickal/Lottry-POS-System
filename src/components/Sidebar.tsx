@@ -365,14 +365,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 ? 'bg-orange-500 text-white' 
                 : currentAssistant?.avatarBg || 'bg-amber-500 text-white'
             }`}>
-              {authenticatedRole === 'admin' ? 'AD' : currentAssistant?.id?.replace('ast', '#') || '#1'}
+              {authenticatedRole === 'admin' ? 'චි' : currentAssistant?.id?.replace('ast', '#') || '#1'}
             </div>
             <div className="min-w-0">
               <h4 className="text-xs font-bold text-gray-900 truncate">
-                {authenticatedRole === 'admin' ? 'Head Office Admin' : currentAssistant?.shortName}
+                {authenticatedRole === 'admin' ? 'W.M.G. චිත්රා වීරකෝන්' : currentAssistant?.shortName}
               </h4>
               <p className="text-[10px] text-gray-500 truncate">
-                {authenticatedRole === 'admin' ? 'Full Authority' : currentAssistant?.route?.split('/')[0]}
+                {authenticatedRole === 'admin' ? 'ලොතරැයි බෙදාහැරීම් කාර්යාලය • දෙහිඅත්තකණ්ඩිය' : currentAssistant?.route?.split('/')[0]}
               </p>
             </div>
           </div>

@@ -6,11 +6,13 @@ import { formatLKR } from '../utils/formatters';
 interface FinalReceiptModalProps {
   completedSlip: CompletedSlip | null;
   onClose: () => void;
+  canPrint?: boolean;
 }
 
 export const FinalReceiptModal: React.FC<FinalReceiptModalProps> = ({
   completedSlip,
-  onClose
+  onClose,
+  canPrint = true
 }) => {
   if (!completedSlip) return null;
 
@@ -62,8 +64,9 @@ export const FinalReceiptModal: React.FC<FinalReceiptModalProps> = ({
           >
             {/* Header Branding */}
             <div className="text-center border-b border-dashed border-slate-300 pb-3">
-              <h2 className="text-base font-black tracking-tight text-slate-950">LOTTERY DISTRIBUTOR HUB</h2>
-              <p className="text-[10px] text-slate-500 uppercase tracking-wider">Official Wholesale Field Dispatch Receipt</p>
+              <h2 className="text-base font-black tracking-tight text-slate-950">ලොතරැයි බෙදාහැරීම් කාර්යාලය</h2>
+              <p className="text-xs font-bold text-slate-800">W.M.G. චිත්රා වීරකෝන්</p>
+              <p className="text-[10px] text-slate-600">බස් නැවතුම්පළ අසල, දෙහිඅත්තකණ්ඩිය</p>
               <p className="text-xs font-black mt-1 text-slate-900">INVOICE #{completedSlip.id}</p>
               <p className="text-[10px] text-slate-500">{completedSlip.date}</p>
             </div>
@@ -255,14 +258,20 @@ export const FinalReceiptModal: React.FC<FinalReceiptModalProps> = ({
             >
               Close
             </button>
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="px-6 py-2.5 bg-[#18181B] hover:bg-black text-white rounded-full text-xs font-black shadow-md flex items-center gap-1.5 transition-all"
-            >
-              <Printer className="w-4 h-4" />
-              Print Bluetooth Slip
-            </button>
+            {canPrint ? (
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="px-6 py-2.5 bg-[#18181B] hover:bg-black text-white rounded-full text-xs font-black shadow-md flex items-center gap-1.5 transition-all"
+              >
+                <Printer className="w-4 h-4" />
+                Print Bluetooth Slip
+              </button>
+            ) : (
+              <span className="px-4 py-2.5 rounded-full bg-stone-100 text-stone-400 text-xs font-bold border border-stone-200 italic">
+                Printing restricted to field assistants
+              </span>
+            )}
           </div>
         </div>
 

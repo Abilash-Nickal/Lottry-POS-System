@@ -57,9 +57,11 @@ export default function LotteryDistributorPOS() {
 
     // Master Data
     brands,
+    setBrands,
     sellers,
     setSellers,
     assistants,
+    setAssistants,
     transactions,
 
     // Active Objects & Aggregates
@@ -233,6 +235,14 @@ export default function LotteryDistributorPOS() {
             onSelectActionId={setSelectedActionId}
           />
         </div>
+
+        {/* Receipt Slip Modal for Assistants */}
+        <FinalReceiptModal
+          completedSlip={completedSlip}
+          onClose={() => setCompletedSlip(null)}
+          canPrint={true}
+        />
+
         <Toast toast={toast} />
       </div>
     );
@@ -276,7 +286,7 @@ export default function LotteryDistributorPOS() {
         />
 
         {/* Dynamic Main Workspace Content */}
-        <main className="flex-1 px-6 sm:px-8 pb-12 max-w-7xl w-full">
+        <main className={`flex-1 px-6 sm:px-8 pb-12 max-w-7xl w-full ${currentStep === 'ADMIN_DASHBOARD' ? 'pt-6 sm:pt-8' : ''}`}>
           
           {/* Case 3: Admin Console & Dashboard */}
           {currentStep === 'ADMIN_DASHBOARD' && (
@@ -296,9 +306,8 @@ export default function LotteryDistributorPOS() {
                 setCurrentStep('SELLER_SELECT');
               }}
               onSwitchToPOSMode={() => setCurrentStep('USER_SELECT')}
-              onOpenSlipModal={(txn) => {
-                const sObj = sellers.find(s => s.id === txn.sellerId) || currentSeller;
-                openAllInOneReceipt(sObj);
+              onOpenSlipModal={() => {
+                showToast('Only field assistants can print receipts', 'error');
               }}
               activeTab={selectedAdminTab}
               onTabChange={(tab) => setSelectedAdminTab(tab)}
@@ -375,6 +384,7 @@ export default function LotteryDistributorPOS() {
       <FinalReceiptModal
         completedSlip={completedSlip}
         onClose={() => setCompletedSlip(null)}
+        canPrint={authenticatedRole === 'assistant'}
       />
 
       {/* System Toast Alerts */}

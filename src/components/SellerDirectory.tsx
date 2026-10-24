@@ -112,30 +112,43 @@ export const SellerDirectory: React.FC<SellerDirectoryProps> = ({
         </span>
       </div>
 
-      {/* 3. SEARCH & FILTERS BAR */}
-      <div className="shrink-0 flex items-center gap-3 w-full pb-5">
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 text-[#9F9184] absolute left-4.5 top-1/2 -translate-y-1/2" />
+      {/* 3. SEARCH & FILTERS BAR — Unified single box */}
+      <div className="shrink-0 pb-5">
+        <div className="flex items-center w-full bg-white border border-[#E6DDD4] rounded-2xl shadow-xs overflow-hidden focus-within:border-[#C25838] focus-within:ring-1 focus-within:ring-[#C25838]/15 transition-all duration-200">
+          {/* Search Icon */}
+          <div className="pl-4 pr-1.5 flex items-center justify-center shrink-0">
+            <Search className="w-[18px] h-[18px] text-[#B5A99D]" />
+          </div>
+
+          {/* Search Input */}
           <input
             type="text"
             placeholder="Search by retailer name, code, street, or license..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white border border-[#E6DDD4] rounded-full pl-11 pr-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium text-[#1E1915] placeholder-[#9F9184] focus:outline-none focus:border-[#9E2A1E] shadow-xs transition-colors"
+            className="flex-1 bg-transparent py-3 sm:py-3.5 pr-2 text-xs sm:text-sm font-medium text-[#1E1915] placeholder-[#B5A99D] focus:outline-none min-w-0"
           />
-        </div>
 
-        <button
-          type="button"
-          onClick={() => setShowFiltersModal(!showFiltersModal)}
-          className="px-5 py-2.5 sm:py-3 rounded-full bg-[#8B2519] hover:bg-[#781F14] text-white text-xs sm:text-sm font-extrabold flex items-center gap-2 transition-all shadow-md shadow-[#8B2519]/20 cursor-pointer shrink-0"
-        >
-          <SlidersHorizontal className="w-3.5 h-3.5 stroke-[2.5]" />
-          <span>Filters</span>
-          {tierFilter !== 'ALL' && (
-            <span className="w-2 h-2 rounded-full bg-amber-300" />
-          )}
-        </button>
+          {/* Divider + Filters Button inside the box */}
+          <div className="flex items-center shrink-0 pr-1.5 sm:pr-2 gap-2.5">
+            <div className="w-px h-7 bg-[#E6DDD4]" />
+            <button
+              type="button"
+              onClick={() => setShowFiltersModal(!showFiltersModal)}
+              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all duration-150 cursor-pointer whitespace-nowrap ${
+                showFiltersModal || tierFilter !== 'ALL'
+                  ? 'bg-[#8B2519] text-white shadow-sm shadow-[#8B2519]/25'
+                  : 'bg-[#F5EFE9] hover:bg-[#EDE5DD] text-[#6E645D] hover:text-[#1E1915]'
+              }`}
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>Filters</span>
+              {tierFilter !== 'ALL' && (
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-300 animate-pulse" />
+              )}
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Quick Filter Badges if toggled */}

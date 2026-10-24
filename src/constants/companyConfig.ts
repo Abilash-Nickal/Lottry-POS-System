@@ -7,15 +7,17 @@
 
 export const COMPANY_CONFIG = {
   // Brand & Company Information
-  companyName: 'Lanka Lottery Distributors (Pvt) Ltd',
-  shortName: 'LankaLotto',
+  companyName: 'ලොතරැයි බෙදාහැරීම් කාර්යාලය',
+  distributorName: 'W.M.G. චිත්රා වීරකෝන්',
+  shortName: 'ලොතරැයි POS',
   systemName: 'LOTTO POS',
-  tagline: 'Wholesale Ticket Dispatch & Credit Management Terminal',
-  legalRegistration: 'Reg: PV-98241 / Authorized National Lottery Distributor',
-  taxNumber: 'VAT-49201948-LKR',
-  hotline: '+94 11 234 5678',
-  email: 'distributor@lankalotto.lk',
-  address: 'No. 45, D.R. Wijewardena Mawatha, Colombo 10, Sri Lanka',
+  tagline: 'තොග ලොතරැයි බෙදාහැරීමේ හා ණය කළමනාකරණ පද්ධතිය',
+  legalRegistration: 'බස් නැවතුම්පළ අසල, දෙහිඅත්තකණ්ඩිය',
+  taxNumber: 'Reg: DL-DEHI-01',
+  hotline: '+94 27 225 0000',
+  email: 'chithra.lottery@gmail.com',
+  address: 'බස් නැවතුම්පළ අසල, දෙහිඅත්තකණ්ඩිය',
+  city: 'දෙහිඅත්තකණ්ඩිය',
 
   // Start / Splash Loading Screen Configuration
   splash: {

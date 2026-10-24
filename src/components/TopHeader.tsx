@@ -35,6 +35,11 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   searchQuery = '',
   onSearchChange
 }) => {
+  // If on Admin Dashboard, top header is not shown
+  if (currentStep === 'ADMIN_DASHBOARD') {
+    return null;
+  }
+
   // Determine page title based on active view
   let title = 'Retailer Ledger & Dispatch';
   let subtitle = `${currentSeller?.name} • ${currentSeller?.location}`;
@@ -91,35 +96,42 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           </button>
         )}
 
-        {/* Quick All-In-One Slip */}
-        <button
-          onClick={onOpenFinalReceipt}
-          className="flex items-center gap-2 px-4 py-1.5 rounded-xl btn-primary text-xs shadow-md shadow-orange-500/20"
-          title="Print All-In-One Consolidated Receipt Slip"
-        >
-          <Printer className="w-3.5 h-3.5" />
-          <span className="hidden md:inline">Print Slip</span>
-        </button>
+        {/* Quick All-In-One Slip (Only available for Field Assistants in Seller Workspace) */}
+        {authenticatedRole === 'assistant' && currentStep === 'SELLER_WORKSPACE' && (
+          <button
+            onClick={onOpenFinalReceipt}
+            className="flex items-center gap-2 px-4 py-1.5 rounded-xl btn-primary text-xs shadow-md shadow-orange-500/20"
+            title="Print All-In-One Consolidated Receipt Slip"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">Print Slip</span>
+          </button>
+        )}
 
-        {/* Activity / Chat icon with count badge */}
-        <div className="relative cursor-pointer">
-          <div className="w-8 h-8 rounded-full bg-[#FAF7F4] hover:bg-[#F2ECE4] border border-[#E6DDD4] flex items-center justify-center text-[#26201D] transition-all shadow-xs">
-            <MessageSquare className="w-3.5 h-3.5" />
-          </div>
-          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#D64933] text-white text-[9px] font-bold flex items-center justify-center shadow-xs">
-            18
-          </span>
-        </div>
+        {/* Activity & Notification Badges (Hidden for Admin / Dashboard) */}
+        {authenticatedRole !== 'admin' && currentStep !== 'ADMIN_DASHBOARD' && (
+          <>
+            {/* Activity / Chat icon with count badge */}
+            <div className="relative cursor-pointer">
+              <div className="w-8 h-8 rounded-full bg-[#FAF7F4] hover:bg-[#F2ECE4] border border-[#E6DDD4] flex items-center justify-center text-[#26201D] transition-all shadow-xs">
+                <MessageSquare className="w-3.5 h-3.5" />
+              </div>
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#D64933] text-white text-[9px] font-bold flex items-center justify-center shadow-xs">
+                18
+              </span>
+            </div>
 
-        {/* Notification Bell with count badge */}
-        <div className="relative cursor-pointer">
-          <div className="w-8 h-8 rounded-full bg-[#FAF7F4] hover:bg-[#F2ECE4] border border-[#E6DDD4] flex items-center justify-center text-[#26201D] transition-all shadow-xs">
-            <Bell className="w-3.5 h-3.5" />
-          </div>
-          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-orange-500 text-white text-[9px] font-bold flex items-center justify-center shadow-xs">
-            52
-          </span>
-        </div>
+            {/* Notification Bell with count badge */}
+            <div className="relative cursor-pointer">
+              <div className="w-8 h-8 rounded-full bg-[#FAF7F4] hover:bg-[#F2ECE4] border border-[#E6DDD4] flex items-center justify-center text-[#26201D] transition-all shadow-xs">
+                <Bell className="w-3.5 h-3.5" />
+              </div>
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-orange-500 text-white text-[9px] font-bold flex items-center justify-center shadow-xs">
+                52
+              </span>
+            </div>
+          </>
+        )}
 
         {/* User Profile Pill */}
         <div 
@@ -128,14 +140,14 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           title="Click to Switch User"
         >
           <div className="w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs text-white shadow-xs bg-gradient-to-br from-orange-500 to-amber-600">
-            {authenticatedRole === 'admin' ? 'AD' : currentAssistant?.shortName?.charAt(0) || 'K'}
+            {authenticatedRole === 'admin' ? 'චි' : currentAssistant?.shortName?.charAt(0) || 'K'}
           </div>
           <div className="text-left hidden lg:block">
             <span className="text-xs font-bold text-[#26201D] block leading-tight group-hover:text-orange-600 transition-colors">
-              {authenticatedRole === 'admin' ? 'Oda Dink' : currentAssistant?.shortName}
+              {authenticatedRole === 'admin' ? 'W.M.G. චිත්රා වීරකෝන්' : currentAssistant?.shortName}
             </span>
             <span className="text-[10px] font-medium text-[#7F7266] block leading-tight">
-              {authenticatedRole === 'admin' ? 'Super Admin' : 'Field POS Officer'}
+              {authenticatedRole === 'admin' ? 'ලොතරැයි බෙදාහැරීම් කාර්යාලය • දෙහිඅත්තකණ්ඩිය' : 'Field POS Officer'}
             </span>
           </div>
           <ChevronDown className="w-3.5 h-3.5 text-[#9F9184] group-hover:text-[#26201D] transition-colors hidden sm:block" />

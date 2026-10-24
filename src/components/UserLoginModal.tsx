@@ -190,7 +190,7 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           <span>
             {pendingUserRole === 'admin' 
-              ? 'Supervisor Head (Admin)' 
+              ? 'W.M.G. චිත්රා වීරකෝන් (Admin)' 
               : `${currentAst?.name || 'Distributor'} (${currentAst?.id || 'COL-01'})`
             }
           </span>

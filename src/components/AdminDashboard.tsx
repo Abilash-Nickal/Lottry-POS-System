@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Smartphone, 
   Navigation, 
@@ -19,7 +19,10 @@ import {
   MapPin,
   Lock,
   Unlock,
-  AlertCircle
+  AlertCircle,
+  Search,
+  SlidersHorizontal,
+  Trash2
 } from 'lucide-react';
 import { LotteryBrand, Assistant, Seller, Transaction } from '../types';
 import { formatLKR } from '../utils/formatters';
@@ -78,6 +81,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     creditLimit: 300000,
     assignedAssistant: assistants[0]?.id || 'ast1'
   });
+
+  // Sellers Search, Tier Filter & Delete States
+  const [sellerSearchQuery, setSellerSearchQuery] = useState('');
+  const [sellerTierFilter, setSellerTierFilter] = useState<'ALL' | 'Tier A' | 'Tier B'>('ALL');
+  const [showSellerFilters, setShowSellerFilters] = useState(false);
+  const [deletingSeller, setDeletingSeller] = useState<Seller | null>(null);
+
+  const filteredSellers = useMemo(() => {
+    return sellers.filter(s => {
+      const matchSearch =
+        s.name.toLowerCase().includes(sellerSearchQuery.toLowerCase()) ||
+        s.owner.toLowerCase().includes(sellerSearchQuery.toLowerCase()) ||
+        s.location.toLowerCase().includes(sellerSearchQuery.toLowerCase()) ||
+        s.id.toLowerCase().includes(sellerSearchQuery.toLowerCase()) ||
+        s.phone.toLowerCase().includes(sellerSearchQuery.toLowerCase());
+      const matchTier = sellerTierFilter === 'ALL' || s.tier === sellerTierFilter;
+      return matchSearch && matchTier;
+    });
+  }, [sellers, sellerSearchQuery, sellerTierFilter]);
 
   // 2. Assistants Modals
   const [showAddAssistantModal, setShowAddAssistantModal] = useState(false);
@@ -377,10 +399,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-black text-gray-900 mt-2 tracking-tight">
-            Distribution Head Hub
+            W.M.G. චිත්රා වීරකෝන්
           </h2>
-          <p className="text-gray-500 text-sm mt-0.5 font-medium">
-            Manage Sellers, Assistant Accounts & Security, and Ticket Catalog & Tier Pricing.
+          <p className="text-gray-600 text-xs sm:text-sm mt-0.5 font-semibold flex flex-wrap items-center gap-2">
+            <span className="text-orange-600 font-bold">ලොතරැයි බෙදාහැරීම් කාර්යාලය</span>
+            <span className="text-gray-300">•</span>
+            <span>බස් නැවතුම්පළ අසල, දෙහිඅත්තකණ්ඩිය</span>
           </p>
         </div>
 
@@ -515,6 +539,91 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </button>
           </div>
 
+          {/* Unified Search & Filters Bar — Same as Assistant's Directory */}
+          <div className="space-y-3">
+            <div className="flex items-center w-full bg-stone-50 border border-stone-200 rounded-2xl shadow-xs overflow-hidden focus-within:border-[#9E2A1E] focus-within:ring-1 focus-within:ring-[#9E2A1E]/15 focus-within:bg-white transition-all duration-200">
+              {/* Search Icon */}
+              <div className="pl-4 pr-1.5 flex items-center justify-center shrink-0">
+                <Search className="w-4 h-4 text-stone-400" />
+              </div>
+
+              {/* Search Input */}
+              <input
+                type="text"
+                placeholder="Search by retailer name, code, street, owner, or phone..."
+                value={sellerSearchQuery}
+                onChange={(e) => setSellerSearchQuery(e.target.value)}
+                className="flex-1 bg-transparent py-3 pr-2 text-xs sm:text-sm font-medium text-stone-900 placeholder-stone-400 focus:outline-none min-w-0"
+              />
+
+              {sellerSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSellerSearchQuery('')}
+                  className="p-1 mr-1 text-stone-400 hover:text-stone-600 rounded-full hover:bg-stone-200/60 transition-colors"
+                  title="Clear search"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+
+              {/* Divider + Filters Button inside the box */}
+              <div className="flex items-center shrink-0 pr-1.5 sm:pr-2 gap-2">
+                <div className="w-px h-6 bg-stone-200" />
+                <button
+                  type="button"
+                  onClick={() => setShowSellerFilters(!showSellerFilters)}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all duration-150 cursor-pointer whitespace-nowrap ${
+                    showSellerFilters || sellerTierFilter !== 'ALL'
+                      ? 'bg-[#9E2A1E] text-white shadow-xs'
+                      : 'bg-stone-200/70 hover:bg-stone-200 text-stone-700 hover:text-stone-900'
+                  }`}
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5" />
+                  <span>Filters</span>
+                  {sellerTierFilter !== 'ALL' && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-300 animate-pulse" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Filter Badges if toggled */}
+            {showSellerFilters && (
+              <div className="p-2.5 rounded-2xl bg-stone-50 border border-stone-200 flex flex-wrap items-center gap-2 shadow-xs animate-in fade-in duration-150">
+                <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider mr-1">
+                  Filter Tiers:
+                </span>
+                {(['ALL', 'Tier A', 'Tier B'] as const).map((tier) => (
+                  <button
+                    key={tier}
+                    type="button"
+                    onClick={() => setSellerTierFilter(tier)}
+                    className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                      sellerTierFilter === tier
+                        ? 'bg-[#9E2A1E] text-white shadow-xs'
+                        : 'bg-white text-stone-700 hover:bg-stone-100 border border-stone-200'
+                    }`}
+                  >
+                    {tier === 'ALL' ? 'All Retailers' : tier}
+                  </button>
+                ))}
+                {sellerTierFilter !== 'ALL' && (
+                  <button
+                    type="button"
+                    onClick={() => setSellerTierFilter('ALL')}
+                    className="text-xs text-[#9E2A1E] hover:underline font-semibold pr-2 cursor-pointer"
+                  >
+                    Clear filter
+                  </button>
+                )}
+                <span className="text-xs text-stone-400 font-medium ml-auto">
+                  Showing {filteredSellers.length} of {sellers.length} retailers
+                </span>
+              </div>
+            )}
+          </div>
+
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-stone-50 text-stone-600 font-semibold border-b border-stone-200">
@@ -531,86 +640,119 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100 text-stone-700">
-                {sellers.map(s => {
-                  const percent = Math.min(100, Math.round((s.currentCredit / (s.creditLimit || 1)) * 100));
-                  return (
-                    <tr key={s.id} className="hover:bg-stone-50/70">
-                      <td className="py-3 px-3 font-bold text-stone-900">
-                        {s.name}
-                        <span className="block text-[10px] text-stone-400 font-mono font-normal">ID: {s.id}</span>
-                      </td>
-                      <td className="py-3 px-3">
-                        <span className="font-semibold text-stone-800 block">{s.owner}</span>
-                        <span className="text-[10px] text-stone-500">{s.phone}</span>
-                      </td>
-                      <td className="py-3 px-3">
-                        <span className="text-stone-800 font-medium block">{s.location}</span>
-                        <span className="text-[10px] text-stone-500">
-                          Rep: {assistants.find(a => a.id === s.assignedAssistant)?.shortName || 'Unassigned'}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-center">
+                {filteredSellers.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="py-12 text-center">
+                      <div className="max-w-xs mx-auto text-center space-y-2">
+                        <Store className="w-8 h-8 text-stone-300 mx-auto" />
+                        <p className="text-sm font-bold text-stone-700">No retailers found</p>
+                        <p className="text-xs text-stone-400">
+                          No retailers match your search criteria. Try modifying your search or clearing filters.
+                        </p>
                         <button
                           type="button"
-                          onClick={() => handleToggleTier(s.id)}
-                          className={`px-3 py-1 rounded-full text-xs font-extrabold border transition-all cursor-pointer shadow-2xs ${
-                            s.tier === 'Tier A'
-                              ? 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100'
-                              : 'bg-stone-100 text-stone-800 border-stone-300 hover:bg-stone-200'
-                          }`}
-                          title="Click to switch Tier A (Wholesale) / Tier B (Retail)"
+                          onClick={() => {
+                            setSellerSearchQuery('');
+                            setSellerTierFilter('ALL');
+                          }}
+                          className="text-xs text-[#9E2A1E] font-bold hover:underline cursor-pointer"
                         >
-                          {s.tier} ⇄
+                          Reset Search & Filters
                         </button>
-                      </td>
-                      <td className="py-3 px-3 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <span className="font-mono font-bold text-stone-900">{formatLKR(s.creditLimit)}</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredSellers.map(s => {
+                    const percent = Math.min(100, Math.round((s.currentCredit / (s.creditLimit || 1)) * 100));
+                    return (
+                      <tr key={s.id} className="hover:bg-stone-50/70">
+                        <td className="py-3 px-3 font-bold text-stone-900">
+                          {s.name}
+                          <span className="block text-[10px] text-stone-400 font-mono font-normal">ID: {s.id}</span>
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className="font-semibold text-stone-800 block">{s.owner}</span>
+                          <span className="text-[10px] text-stone-500">{s.phone}</span>
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className="text-stone-800 font-medium block">{s.location}</span>
+                          <span className="text-[10px] text-stone-500">
+                            Rep: {assistants.find(a => a.id === s.assignedAssistant)?.shortName || 'Unassigned'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-center">
                           <button
                             type="button"
-                            onClick={() => handleOpenModifyCredit(s)}
-                            className="p-1 rounded-md hover:bg-stone-200 text-stone-500 hover:text-stone-900 transition-colors"
-                            title="Set / Modify Credit Limit"
+                            onClick={() => handleToggleTier(s.id)}
+                            className={`px-3 py-1 rounded-full text-xs font-extrabold border transition-all cursor-pointer shadow-2xs ${
+                              s.tier === 'Tier A'
+                                ? 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100'
+                                : 'bg-stone-100 text-stone-800 border-stone-300 hover:bg-stone-200'
+                            }`}
+                            title="Click to switch Tier A (Wholesale) / Tier B (Retail)"
                           >
-                            <Edit3 className="w-3.5 h-3.5" />
+                            {s.tier} ⇄
                           </button>
-                        </div>
-                      </td>
-                      <td className="py-3 px-3 text-right font-mono font-bold text-amber-700">
-                        {formatLKR(s.currentCredit)}
-                      </td>
-                      <td className="py-3 px-3 text-center font-mono">
-                        <span className={`font-bold ${percent >= 90 ? 'text-red-600' : 'text-stone-700'}`}>
-                          {percent}%
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-center">
-                        {s.isFrozen ? (
-                          <span className="text-[10px] font-bold text-red-700 bg-red-100 px-2.5 py-0.5 rounded-full">FROZEN</span>
-                        ) : (
-                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full">ACTIVE</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-3 text-right space-x-1.5 whitespace-nowrap">
-                        <button
-                          onClick={() => onToggleFreeze(s.id)}
-                          className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors cursor-pointer ${
-                            s.isFrozen ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-red-100 text-red-800 hover:bg-red-200'
-                          }`}
-                        >
-                          {s.isFrozen ? 'Unfreeze' : 'Freeze'}
-                        </button>
+                        </td>
+                        <td className="py-3 px-3 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <span className="font-mono font-bold text-stone-900">{formatLKR(s.creditLimit)}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenModifyCredit(s)}
+                              className="p-1 rounded-md hover:bg-stone-200 text-stone-500 hover:text-stone-900 transition-colors cursor-pointer"
+                              title="Set / Modify Credit Limit"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3 text-right font-mono font-bold text-amber-700">
+                          {formatLKR(s.currentCredit)}
+                        </td>
+                        <td className="py-3 px-3 text-center font-mono">
+                          <span className={`font-bold ${percent >= 90 ? 'text-red-600' : 'text-stone-700'}`}>
+                            {percent}%
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          {s.isFrozen ? (
+                            <span className="text-[10px] font-bold text-red-700 bg-red-100 px-2.5 py-0.5 rounded-full">FROZEN</span>
+                          ) : (
+                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full">ACTIVE</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-right space-x-1.5 whitespace-nowrap">
+                          <button
+                            onClick={() => onToggleFreeze(s.id)}
+                            className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors cursor-pointer ${
+                              s.isFrozen ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-red-100 text-red-800 hover:bg-red-200'
+                            }`}
+                          >
+                            {s.isFrozen ? 'Unfreeze' : 'Freeze'}
+                          </button>
 
-                        <button
-                          onClick={() => onOpenSellerPOS(s.id, s.assignedAssistant)}
-                          className="px-3 py-1 rounded-full bg-[#18181B] hover:bg-black text-white font-bold text-[11px] transition-colors cursor-pointer"
-                        >
-                          Open POS
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
+                          <button
+                            onClick={() => onOpenSellerPOS(s.id, s.assignedAssistant)}
+                            className="px-3 py-1 rounded-full bg-[#18181B] hover:bg-black text-white font-bold text-[11px] transition-colors cursor-pointer"
+                          >
+                            Open POS
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setDeletingSeller(s)}
+                            className="p-1.5 rounded-full text-stone-400 hover:text-rose-600 hover:bg-rose-50 border border-stone-200 hover:border-rose-200 transition-colors cursor-pointer"
+                            title={`Delete ${s.name}`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
@@ -898,13 +1040,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     </td>
                     <td className="py-3 px-3 text-stone-600 max-w-xs truncate">{txn.notes}</td>
                     <td className="py-3 px-3 text-center">
-                      <button
-                        onClick={() => onOpenSlipModal(txn)}
-                        className="p-1.5 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 transition-colors cursor-pointer"
-                        title="View Official Receipt Slip"
-                      >
-                        <Printer className="w-3.5 h-3.5" />
-                      </button>
+                      <span className="text-[10px] text-stone-400 font-medium italic">Admin View</span>
                     </td>
                   </tr>
                 ))}
@@ -1513,6 +1649,81 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 4. Delete Seller Confirmation Modal */}
+      {deletingSeller && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-stone-200 space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                <AlertCircle className="w-5 h-5" />
+              </div>
+              <div className="flex-1">
+                <h4 className="text-lg font-black text-stone-900">
+                  Delete Retailer?
+                </h4>
+                <p className="text-xs text-stone-500 mt-1">
+                  Are you sure you want to permanently remove <strong className="text-stone-900 font-bold">{deletingSeller.name}</strong> from the system?
+                </p>
+              </div>
+              <button
+                onClick={() => setDeletingSeller(null)}
+                className="p-1 text-stone-400 hover:text-stone-600 rounded-lg hover:bg-stone-100 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 space-y-2 text-xs">
+              <div className="flex justify-between text-stone-600">
+                <span>Shop Owner:</span>
+                <span className="font-semibold text-stone-900">{deletingSeller.owner}</span>
+              </div>
+              <div className="flex justify-between text-stone-600">
+                <span>Route / City:</span>
+                <span className="font-semibold text-stone-900">{deletingSeller.location}</span>
+              </div>
+              <div className="flex justify-between text-stone-600">
+                <span>Current Debt:</span>
+                <span className={`font-mono font-bold ${deletingSeller.currentCredit > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                  {formatLKR(deletingSeller.currentCredit)}
+                </span>
+              </div>
+              {deletingSeller.currentCredit > 0 && (
+                <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] font-medium leading-relaxed">
+                  ⚠️ This seller has an outstanding balance of <strong>{formatLKR(deletingSeller.currentCredit)}</strong>. Deleting will permanently remove their record from the active roster.
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeletingSeller(null)}
+                className="px-4 py-2 rounded-full border border-stone-200 text-stone-700 hover:bg-stone-100 text-xs font-bold transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onUpdateSellers) {
+                    onUpdateSellers(prev => prev.filter(s => s.id !== deletingSeller.id));
+                  }
+                  if (showToast) {
+                    showToast(`Deleted retailer "${deletingSeller.name}"`, 'success');
+                  }
+                  setDeletingSeller(null);
+                }}
+                className="px-5 py-2 rounded-full bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors shadow-sm shadow-rose-600/20 cursor-pointer flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Confirm Delete</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
