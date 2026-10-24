@@ -28,11 +28,11 @@ import {
  * from the UI view so any changes can be made simply and cleanly.
  */
 export function usePOSState() {
-  // Navigation & Step State (Defaults directly to ADMIN_DASHBOARD so admin panel is immediately visible)
-  const [currentStep, setCurrentStep] = useState<StepType>('ADMIN_DASHBOARD');
+  // Navigation & Step State: Initial load starts with simple SPLASH loading screen, then transitions to USER_SELECT
+  const [currentStep, setCurrentStep] = useState<StepType>('SPLASH');
   const [pendingUserRole, setPendingUserRole] = useState<'admin' | 'assistant' | null>(null);
   const [pendingAssistantId, setPendingAssistantId] = useState<string | null>(null);
-  const [authenticatedRole, setAuthenticatedRole] = useState<'admin' | 'assistant' | null>('admin');
+  const [authenticatedRole, setAuthenticatedRole] = useState<'admin' | 'assistant' | null>(null);
 
   // Active Selections
   const [selectedAssistantId, setSelectedAssistantId] = useState<string>('ast1');

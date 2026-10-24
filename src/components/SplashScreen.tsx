@@ -11,13 +11,16 @@ interface SplashScreenProps {
  */
 export const SplashScreen: React.FC<SplashScreenProps> = ({ 
   onFinish,
-  durationMs = 1200
+  durationMs = 1000
 }) => {
   const [progress, setProgress] = useState(0);
   const [isFadingOut, setIsFadingOut] = useState(false);
+  const onFinishRef = React.useRef(onFinish);
+  onFinishRef.current = onFinish;
 
   useEffect(() => {
     const startTime = Date.now();
+    let timerId: any;
     const interval = setInterval(() => {
       const elapsed = Date.now() - startTime;
       const rawPct = Math.min(100, Math.round((elapsed / durationMs) * 100));
@@ -26,14 +29,17 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
       if (rawPct >= 100) {
         clearInterval(interval);
         setIsFadingOut(true);
-        setTimeout(() => {
-          onFinish();
-        }, 300);
+        timerId = setTimeout(() => {
+          onFinishRef.current();
+        }, 250);
       }
     }, 20);
 
-    return () => clearInterval(interval);
-  }, [durationMs, onFinish]);
+    return () => {
+      clearInterval(interval);
+      if (timerId) clearTimeout(timerId);
+    };
+  }, [durationMs]);
 
   return (
     <div 
