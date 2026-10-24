@@ -26,6 +26,12 @@ import {
 } from 'lucide-react';
 import { LotteryBrand, Assistant, Seller, Transaction } from '../types';
 import { formatLKR } from '../utils/formatters';
+import { 
+  dbUpsertSeller, 
+  dbDeleteSeller, 
+  dbUpsertAssistant, 
+  dbUpsertBrand 
+} from '../lib/supabaseService';
 
 interface AdminDashboardProps {
   brands: LotteryBrand[];
@@ -153,7 +159,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         if (s.id === sellerId) {
           const nextTier = s.tier === 'Tier A' ? 'Tier B' : 'Tier A';
           if (showToast) showToast(`${s.name} switched to ${nextTier}`, 'success');
-          return { ...s, tier: nextTier };
+          const updated = { ...s, tier: nextTier };
+          dbUpsertSeller(updated);
+          return updated;
         }
         return s;
       })
@@ -174,7 +182,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
 
     onUpdateSellers(prev =>
-      prev.map(s => (s.id === editingCreditSeller.id ? { ...s, creditLimit: limit } : s))
+      prev.map(s => {
+        if (s.id === editingCreditSeller.id) {
+          const updated = { ...s, creditLimit: limit };
+          dbUpsertSeller(updated);
+          return updated;
+        }
+        return s;
+      })
     );
     if (showToast) {
       showToast(`Credit limit for ${editingCreditSeller.name} updated to ${formatLKR(limit)}`, 'success');
@@ -206,6 +221,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     if (onUpdateSellers) {
       onUpdateSellers(prev => [...prev, newSeller]);
     }
+    dbUpsertSeller(newSeller);
     if (showToast) showToast(`Added retailer "${newSeller.name}" to roster`, 'success');
     setShowAddSellerModal(false);
     setNewSellerForm({
@@ -235,7 +251,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
 
     onUpdateAssistants(prev =>
-      prev.map(a => (a.id === editingPinAssistant.id ? { ...a, defaultPass: newPinInput } : a))
+      prev.map(a => {
+        if (a.id === editingPinAssistant.id) {
+          const updated = { ...a, defaultPass: newPinInput };
+          dbUpsertAssistant(updated);
+          return updated;
+        }
+        return a;
+      })
     );
     if (showToast) {
       showToast(`Login PIN for ${editingPinAssistant.name} updated to "${newPinInput}"`, 'success');
@@ -260,19 +283,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     if (!editingAssistant || !onUpdateAssistants) return;
 
     onUpdateAssistants(prev =>
-      prev.map(a =>
-        a.id === editingAssistant.id
-          ? {
-              ...a,
-              name: newAssistantForm.name,
-              shortName: newAssistantForm.shortName || newAssistantForm.name.split(' ')[0],
-              phone: newAssistantForm.phone,
-              route: newAssistantForm.route,
-              username: newAssistantForm.username,
-              defaultPass: newAssistantForm.defaultPass
-            }
-          : a
-      )
+      prev.map(a => {
+        if (a.id === editingAssistant.id) {
+          const updated = {
+            ...a,
+            name: newAssistantForm.name,
+            shortName: newAssistantForm.shortName || newAssistantForm.name.split(' ')[0],
+            phone: newAssistantForm.phone,
+            route: newAssistantForm.route,
+            username: newAssistantForm.username,
+            defaultPass: newAssistantForm.defaultPass
+          };
+          dbUpsertAssistant(updated);
+          return updated;
+        }
+        return a;
+      })
     );
     if (showToast) showToast(`Updated profile for ${newAssistantForm.name}`, 'success');
     setEditingAssistant(null);
@@ -303,6 +329,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     if (onUpdateAssistants) {
       onUpdateAssistants(prev => [...prev, newAst]);
     }
+    dbUpsertAssistant(newAst);
     if (showToast) showToast(`Created assistant account for ${newAst.name}`, 'success');
     setShowAddAssistantModal(false);
     setNewAssistantForm({
@@ -340,25 +367,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
 
     if (editingBrand) {
-      // Update existing brand
+      const updatedBrand: LotteryBrand = {
+        ...editingBrand,
+        name: brandForm.name,
+        type: brandForm.type,
+        faceValue: Number(brandForm.faceValue),
+        tierAPrice: Number(brandForm.tierAPrice),
+        tierBPrice: Number(brandForm.tierBPrice),
+        stockPerPack: Number(brandForm.stockPerPack),
+        drawDays: brandForm.drawDays
+      };
+
       if (onUpdateBrands) {
         onUpdateBrands(prev =>
-          prev.map(b =>
-            b.id === editingBrand.id
-              ? {
-                  ...b,
-                  name: brandForm.name,
-                  type: brandForm.type,
-                  faceValue: Number(brandForm.faceValue),
-                  tierAPrice: Number(brandForm.tierAPrice),
-                  tierBPrice: Number(brandForm.tierBPrice),
-                  stockPerPack: Number(brandForm.stockPerPack),
-                  drawDays: brandForm.drawDays
-                }
-              : b
-          )
+          prev.map(b => (b.id === editingBrand.id ? updatedBrand : b))
         );
       }
+      dbUpsertBrand(updatedBrand);
       if (showToast) showToast(`Updated pricing rates for ${brandForm.name}`, 'success');
       setEditingBrand(null);
     } else {
@@ -379,6 +404,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       if (onUpdateBrands) {
         onUpdateBrands(prev => [...prev, newBrand]);
       }
+      dbUpsertBrand(newBrand);
       if (showToast) showToast(`Added ticket brand "${newBrand.name}" to catalog`, 'success');
       setShowAddBrandModal(false);
     }
@@ -1713,6 +1739,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   if (onUpdateSellers) {
                     onUpdateSellers(prev => prev.filter(s => s.id !== deletingSeller.id));
                   }
+                  dbDeleteSeller(deletingSeller.id);
                   if (showToast) {
                     showToast(`Deleted retailer "${deletingSeller.name}"`, 'success');
                   }

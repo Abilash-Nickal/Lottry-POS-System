@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { 
   LotteryBrand, 
   Assistant, 
@@ -15,6 +15,11 @@ import {
   INITIAL_TRANSACTIONS 
 } from '../data/initialData';
 import { formatLKR } from '../utils/formatters';
+import { 
+  fetchAllData, 
+  dbRecordTransaction, 
+  dbUpsertSeller 
+} from '../lib/supabaseService';
 
 /**
  * MASTER STATE HOOK FOR LOTTERY POS SYSTEM
@@ -38,6 +43,26 @@ export function usePOSState() {
   const [sellers, setSellers] = useState<Seller[]>(INITIAL_SELLERS);
   const [assistants, setAssistants] = useState<Assistant[]>(INITIAL_ASSISTANTS);
   const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS);
+
+  // Initialize and synchronize live data with Supabase
+  useEffect(() => {
+    let isMounted = true;
+    fetchAllData()
+      .then((data) => {
+        if (!isMounted) return;
+        if (data.sellers.length > 0) setSellers(data.sellers);
+        if (data.assistants.length > 0) setAssistants(data.assistants);
+        if (data.brands.length > 0) setBrands(data.brands);
+        if (data.transactions.length > 0) setTransactions(data.transactions);
+      })
+      .catch((err) => {
+        console.warn('Supabase fetch error, using local fallback:', err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Action Modals & Receipt State
   const [activeActionModal, setActiveActionModal] = useState<ActionModalType>(null);
@@ -164,6 +189,9 @@ export function usePOSState() {
     setTransactions(prev => [newTxn, ...prev]);
     setActiveActionModal(null);
     showToast(`${params.typeLabel} confirmed! Credit updated to ${formatLKR(nextCredit)}`, 'success');
+
+    // Persist transaction & updated seller debt to Supabase in the background
+    dbRecordTransaction(newTxn, nextCredit);
   };
 
   // Case 6: Sale Dispatch Confirmation
@@ -402,7 +430,14 @@ export function usePOSState() {
   };
 
   const handleToggleFreeze = (sellerId: string) => {
-    setSellers(prev => prev.map(s => s.id === sellerId ? { ...s, isFrozen: !s.isFrozen } : s));
+    setSellers(prev => prev.map(s => {
+      if (s.id === sellerId) {
+        const updated = { ...s, isFrozen: !s.isFrozen };
+        dbUpsertSeller(updated);
+        return updated;
+      }
+      return s;
+    }));
     const sObj = sellers.find(s => s.id === sellerId);
     showToast(`${sObj?.name} is now ${!sObj?.isFrozen ? 'FROZEN' : 'ACTIVE'}`, 'info');
   };
