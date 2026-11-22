@@ -2,6 +2,7 @@ import React from 'react';
 import { ArrowLeft, User, Navigation, ChevronRight, Smartphone } from 'lucide-react';
 import { Assistant } from '../types';
 import { COMPANY_CONFIG } from '../constants/companyConfig';
+import { AvatarDisplay } from './AvatarDisplay';
 
 interface DistributorSelectionProps {
   assistants: Assistant[];
@@ -57,9 +58,13 @@ export const DistributorSelection: React.FC<DistributorSelectionProps> = ({
             className="group glass-panel-elevated hover:bg-orange-50/30 border border-gray-200 hover:border-orange-400 rounded-3xl p-5 cursor-pointer transition-all duration-200 hover:shadow-md hover:shadow-orange-500/10 hover:-translate-y-0.5 flex flex-col justify-between shadow-sm"
           >
             <div className="flex items-start gap-3.5">
-              <div className="w-11 h-11 rounded-2xl bg-orange-100 text-orange-700 border border-orange-200 flex items-center justify-center font-black text-xs shadow-xs flex-shrink-0 group-hover:scale-105 transition-transform">
-                {`#0${idx + 1}`}
-              </div>
+              <AvatarDisplay
+                avatarId={ast.avatarId || `char-0${(idx % 14) + 1}`}
+                name={ast.shortName}
+                size="md"
+                showBadge={true}
+                className="group-hover:scale-105 transition-transform shrink-0"
+              />
               <div className="min-w-0 flex-1">
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">
                   Distributor #{idx + 1}

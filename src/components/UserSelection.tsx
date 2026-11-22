@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Users, Shield, Check } from 'lucide-react';
 import { Assistant } from '../types';
+import { AvatarDisplay } from './AvatarDisplay';
 
 interface UserSelectionProps {
   assistants?: Assistant[];
@@ -126,19 +127,17 @@ export const UserSelection: React.FC<UserSelectionProps> = ({
                 </div>
               )}
 
-              {/* Big Circular Avatar with terracotta glow and red dot */}
+              {/* Big Circular Character Avatar */}
               <div className="relative mt-2 mb-4">
-                <div
-                  className={`w-24 h-24 sm:w-28 sm:h-28 rounded-full flex items-center justify-center text-xl sm:text-2xl font-bold tracking-tight shadow-inner ${
-                    isSelected
-                      ? 'bg-gradient-to-b from-[#F0B19E] to-[#E59781] text-[#2C1D17] ring-2 ring-[#D9826A]/30'
-                      : 'bg-gradient-to-b from-[#F2DDD2] to-[#E8CBB8] text-[#2C1D17]'
-                  }`}
-                >
-                  {initials}
-                </div>
-                {/* Small terracotta dot on bottom-right of circle */}
-                <span className="w-3.5 h-3.5 rounded-full bg-[#8A251A] border-2 border-white absolute bottom-1 right-1 shadow-xs" />
+                <AvatarDisplay
+                  avatarId={ast.avatarId || `char-0${(idx % 14) + 1}`}
+                  name={displayName}
+                  size="2xl"
+                  showBadge={true}
+                  className={isSelected ? 'ring-4 ring-[#8A251A]/30 rounded-full' : ''}
+                />
+                {/* Small terracotta status dot on bottom-right */}
+                <span className="w-3.5 h-3.5 rounded-full bg-[#8A251A] border-2 border-white absolute bottom-0 right-0 shadow-xs" />
               </div>
 
               {/* Operator Name */}

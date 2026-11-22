@@ -1,4 +1,12 @@
-import { LotteryBrand, Assistant, Seller, Transaction } from '../types';
+import { LotteryBrand, Assistant, Seller, Transaction, AdminProfile } from '../types';
+
+export const INITIAL_ADMIN_PROFILE: AdminProfile = {
+  id: 'admin_1',
+  name: 'W.M.G. චිත්රා වීරකෝන්',
+  title: 'ලොතරැයි බෙදාහැරීම් කාර්යාලය • දෙහිඅත්තකණ්ඩිය',
+  phone: '+94 77 123 4567',
+  avatarId: 'char-01'
+};
 
 export const INITIAL_BRANDS: LotteryBrand[] = [
   // Daily Draw Lotteries (Standard 100-ticket packs - 12 Brands)
@@ -25,10 +33,10 @@ export const INITIAL_BRANDS: LotteryBrand[] = [
 ];
 
 export const INITIAL_ASSISTANTS: Assistant[] = [
-  { id: 'ast1', name: 'Nuwan Perera', shortName: 'Nuwan Perera', username: 'nuwan', defaultPass: '1234', phone: '+94 77 123 4567', route: 'Colombo Fort Route', cashInHand: 42500, winningVouchers: 12400, totalOrdersToday: 8, avatarBg: 'bg-orange-500 text-white' },
-  { id: 'ast2', name: 'Mohamed Rizwan', shortName: 'Mohamed Rizwan', username: 'rizwan', defaultPass: '1234', phone: '+94 71 987 6543', route: 'Kollupitiya Route', cashInHand: 18200, winningVouchers: 8500, totalOrdersToday: 5, avatarBg: 'bg-emerald-600 text-white' },
-  { id: 'ast3', name: 'Mohamed Rizwan', shortName: 'Mohamed Rizwan', username: 'rizwan2', defaultPass: '1234', phone: '+94 76 555 4321', route: 'Maradana Route', cashInHand: 31000, winningVouchers: 14200, totalOrdersToday: 7, avatarBg: 'bg-blue-600 text-white' },
-  { id: 'ast4', name: 'Mohamed Rizwan', shortName: 'Mohamed Rizwan', username: 'rizwan3', defaultPass: '1234', phone: '+94 75 444 3322', route: 'Dehiwala Route', cashInHand: 24800, winningVouchers: 6900, totalOrdersToday: 6, avatarBg: 'bg-purple-600 text-white' },
+  { id: 'ast1', name: 'Nuwan Perera', shortName: 'Nuwan Perera', username: 'nuwan', defaultPass: '1234', phone: '+94 77 123 4567', route: 'Colombo Fort Route', cashInHand: 42500, winningVouchers: 12400, totalOrdersToday: 8, avatarBg: 'bg-orange-500 text-white', avatarId: 'char-02' },
+  { id: 'ast2', name: 'Mohamed Rizwan', shortName: 'Mohamed Rizwan', username: 'rizwan', defaultPass: '1234', phone: '+94 71 987 6543', route: 'Kollupitiya Route', cashInHand: 18200, winningVouchers: 8500, totalOrdersToday: 5, avatarBg: 'bg-emerald-600 text-white', avatarId: 'char-10' },
+  { id: 'ast3', name: 'Mohamed Rizwan', shortName: 'Mohamed Rizwan', username: 'rizwan2', defaultPass: '1234', phone: '+94 76 555 4321', route: 'Maradana Route', cashInHand: 31000, winningVouchers: 14200, totalOrdersToday: 7, avatarBg: 'bg-blue-600 text-white', avatarId: 'char-07' },
+  { id: 'ast4', name: 'Mohamed Rizwan', shortName: 'Mohamed Rizwan', username: 'rizwan3', defaultPass: '1234', phone: '+94 75 444 3322', route: 'Dehiwala Route', cashInHand: 24800, winningVouchers: 6900, totalOrdersToday: 6, avatarBg: 'bg-purple-600 text-white', avatarId: 'char-04' },
 ];
 
 export const INITIAL_SELLERS: Seller[] = [
@@ -42,7 +50,8 @@ export const INITIAL_SELLERS: Seller[] = [
     creditLimit: 350000, 
     currentCredit: 245000, 
     assignedAssistant: 'ast4',
-    isFrozen: false
+    isFrozen: false,
+    avatarId: 'char-06'
   },
   { 
     id: 's2', 
@@ -54,7 +63,8 @@ export const INITIAL_SELLERS: Seller[] = [
     creditLimit: 250000, 
     currentCredit: 242000, 
     assignedAssistant: 'ast4',
-    isFrozen: false
+    isFrozen: false,
+    avatarId: 'char-01'
   },
   { 
     id: 's3', 
@@ -66,7 +76,8 @@ export const INITIAL_SELLERS: Seller[] = [
     creditLimit: 120000, 
     currentCredit: 65400, 
     assignedAssistant: 'ast2',
-    isFrozen: false
+    isFrozen: false,
+    avatarId: 'char-14'
   },
   { 
     id: 's4', 
@@ -78,7 +89,8 @@ export const INITIAL_SELLERS: Seller[] = [
     creditLimit: 90000, 
     currentCredit: 95000, 
     assignedAssistant: 'ast2',
-    isFrozen: true
+    isFrozen: true,
+    avatarId: 'char-08'
   },
   { 
     id: 's5', 
@@ -90,7 +102,8 @@ export const INITIAL_SELLERS: Seller[] = [
     creditLimit: 150000, 
     currentCredit: 38200, 
     assignedAssistant: 'ast3',
-    isFrozen: false
+    isFrozen: false,
+    avatarId: 'char-12'
   },
   { 
     id: 's6', 
@@ -102,7 +115,8 @@ export const INITIAL_SELLERS: Seller[] = [
     creditLimit: 400000, 
     currentCredit: 185000, 
     assignedAssistant: 'ast1',
-    isFrozen: false
+    isFrozen: false,
+    avatarId: 'char-07'
   },
   { 
     id: 's7', 
@@ -114,7 +128,8 @@ export const INITIAL_SELLERS: Seller[] = [
     creditLimit: 100000, 
     currentCredit: 10000, 
     assignedAssistant: 'ast1',
-    isFrozen: false
+    isFrozen: false,
+    avatarId: 'char-09'
   }
 ];
 

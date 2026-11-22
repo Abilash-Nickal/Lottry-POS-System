@@ -1,9 +1,10 @@
-import { LotteryBrand, Assistant, Seller, Transaction } from '../types';
+import { LotteryBrand, Assistant, Seller, Transaction, AdminProfile } from '../types';
 import { 
   INITIAL_BRANDS, 
   INITIAL_ASSISTANTS, 
   INITIAL_SELLERS, 
-  INITIAL_TRANSACTIONS 
+  INITIAL_TRANSACTIONS,
+  INITIAL_ADMIN_PROFILE
 } from '../data/initialData';
 
 // Storage keys for persistent local storage
@@ -12,6 +13,7 @@ const STORAGE_KEYS = {
   ASSISTANTS: 'LOTTERY_POS_ASSISTANTS_V1',
   BRANDS: 'LOTTERY_POS_BRANDS_V1',
   TRANSACTIONS: 'LOTTERY_POS_TRANSACTIONS_V1',
+  ADMIN_PROFILE: 'LOTTERY_POS_ADMIN_PROFILE_V1',
   SHEETS_URL: 'LOTTERY_POS_GOOGLE_SHEETS_URL'
 };
 
@@ -73,6 +75,9 @@ function initializeLocalStorageIfEmpty() {
   if (!localStorage.getItem(STORAGE_KEYS.TRANSACTIONS)) {
     setLocalData(STORAGE_KEYS.TRANSACTIONS, INITIAL_TRANSACTIONS);
   }
+  if (!localStorage.getItem(STORAGE_KEYS.ADMIN_PROFILE)) {
+    setLocalData(STORAGE_KEYS.ADMIN_PROFILE, INITIAL_ADMIN_PROFILE);
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -83,6 +88,7 @@ export async function fetchAllData(): Promise<{
   assistants: Assistant[];
   brands: LotteryBrand[];
   transactions: Transaction[];
+  adminProfile: AdminProfile;
 }> {
   initializeLocalStorageIfEmpty();
 
@@ -90,6 +96,7 @@ export async function fetchAllData(): Promise<{
   const localAssistants = getLocalData<Assistant[]>(STORAGE_KEYS.ASSISTANTS, INITIAL_ASSISTANTS);
   const localBrands = getLocalData<LotteryBrand[]>(STORAGE_KEYS.BRANDS, INITIAL_BRANDS);
   const localTxns = getLocalData<Transaction[]>(STORAGE_KEYS.TRANSACTIONS, INITIAL_TRANSACTIONS);
+  const localAdmin = getLocalData<AdminProfile>(STORAGE_KEYS.ADMIN_PROFILE, INITIAL_ADMIN_PROFILE);
 
   const sheetsUrl = getGoogleSheetsUrl();
 
@@ -99,7 +106,8 @@ export async function fetchAllData(): Promise<{
       sellers: localSellers,
       assistants: localAssistants,
       brands: localBrands,
-      transactions: localTxns
+      transactions: localTxns,
+      adminProfile: localAdmin
     };
   }
 
@@ -117,18 +125,31 @@ export async function fetchAllData(): Promise<{
 
     const json = await res.json();
     if (json && json.success) {
-      const sellers: Seller[] = (json.sellers && json.sellers.length > 0) ? json.sellers : localSellers;
-      const assistants: Assistant[] = (json.assistants && json.assistants.length > 0) ? json.assistants : localAssistants;
+      const rawSellers: Seller[] = (json.sellers && json.sellers.length > 0) ? json.sellers : localSellers;
+      const rawAssistants: Assistant[] = (json.assistants && json.assistants.length > 0) ? json.assistants : localAssistants;
       const brands: LotteryBrand[] = (json.brands && json.brands.length > 0) ? json.brands : localBrands;
       const transactions: Transaction[] = (json.transactions && json.transactions.length > 0) ? json.transactions : localTxns;
+      const adminProfile: AdminProfile = json.adminProfile || localAdmin;
+
+      // Ensure avatar IDs are populated
+      const sellers = rawSellers.map(s => ({
+        ...s,
+        avatarId: s.avatarId || (s as any).avatar_id || 'char-06'
+      }));
+
+      const assistants = rawAssistants.map(a => ({
+        ...a,
+        avatarId: a.avatarId || (a as any).avatar_id || 'char-02'
+      }));
 
       // Update local storage cache
       setLocalData(STORAGE_KEYS.SELLERS, sellers);
       setLocalData(STORAGE_KEYS.ASSISTANTS, assistants);
       setLocalData(STORAGE_KEYS.BRANDS, brands);
       setLocalData(STORAGE_KEYS.TRANSACTIONS, transactions);
+      setLocalData(STORAGE_KEYS.ADMIN_PROFILE, adminProfile);
 
-      return { sellers, assistants, brands, transactions };
+      return { sellers, assistants, brands, transactions, adminProfile };
     }
   } catch (err) {
     console.warn('Google Sheets fetch failed, running seamlessly from local storage:', err);
@@ -139,7 +160,8 @@ export async function fetchAllData(): Promise<{
     sellers: localSellers,
     assistants: localAssistants,
     brands: localBrands,
-    transactions: localTxns
+    transactions: localTxns,
+    adminProfile: localAdmin
   };
 }
 
@@ -170,6 +192,19 @@ async function postToGoogleSheets(action: string, payload: any): Promise<boolean
 // ----------------------------------------------------------------------------
 // MUTATION METHODS (Immediate Local Storage save + Background Google Sheets sync)
 // ----------------------------------------------------------------------------
+
+export function getAdminProfile(): AdminProfile {
+  return getLocalData<AdminProfile>(STORAGE_KEYS.ADMIN_PROFILE, INITIAL_ADMIN_PROFILE);
+}
+
+export async function dbUpsertAdminProfile(profile: AdminProfile) {
+  try {
+    setLocalData(STORAGE_KEYS.ADMIN_PROFILE, profile);
+    postToGoogleSheets('upsertAdminProfile', profile);
+  } catch (err) {
+    console.error('dbUpsertAdminProfile error:', err);
+  }
+}
 
 export async function dbUpsertSeller(seller: Seller) {
   try {
@@ -343,6 +378,7 @@ export function exportTransactionsToExcel(transactions: Transaction[]) {
 export function exportSellersToExcel(sellers: Seller[]) {
   const headers = [
     'Seller ID',
+    'Avatar ID',
     'Retail Shop Name',
     'Owner / Contact Person',
     'Phone',
@@ -356,6 +392,7 @@ export function exportSellersToExcel(sellers: Seller[]) {
 
   const rows = sellers.map(s => [
     escapeCSV(s.id),
+    escapeCSV(s.avatarId || 'char-06'),
     escapeCSV(s.name),
     escapeCSV(s.owner),
     escapeCSV(s.phone),
@@ -370,5 +407,40 @@ export function exportSellersToExcel(sellers: Seller[]) {
   const csv = [headers.join(','), ...rows].join('\r\n');
   const dateStr = new Date().toISOString().split('T')[0];
   downloadCSVFile(`Lottery_Retailers_Credit_Directory_${dateStr}.csv`, csv);
+}
+
+/**
+ * Export all Field Assistants & Status to Microsoft Excel-compatible CSV file
+ */
+export function exportAssistantsToExcel(assistants: Assistant[]) {
+  const headers = [
+    'Assistant ID',
+    'Avatar ID',
+    'Full Name',
+    'Short Name',
+    'Username',
+    'Phone',
+    'Assigned Route',
+    'Cash in Hand (LKR)',
+    'Winning Vouchers (LKR)',
+    'Total Orders Today'
+  ];
+
+  const rows = assistants.map(a => [
+    escapeCSV(a.id),
+    escapeCSV(a.avatarId || 'char-02'),
+    escapeCSV(a.name),
+    escapeCSV(a.shortName),
+    escapeCSV(a.username),
+    escapeCSV(a.phone),
+    escapeCSV(a.route),
+    escapeCSV(a.cashInHand),
+    escapeCSV(a.winningVouchers),
+    escapeCSV(a.totalOrdersToday)
+  ].join(','));
+
+  const csv = [headers.join(','), ...rows].join('\r\n');
+  const dateStr = new Date().toISOString().split('T')[0];
+  downloadCSVFile(`Lottery_Assistants_Directory_${dateStr}.csv`, csv);
 }
 

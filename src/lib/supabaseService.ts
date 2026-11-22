@@ -15,7 +15,10 @@ export {
   getGoogleSheetsUrl,
   setGoogleSheetsUrl,
   exportTransactionsToExcel,
-  exportSellersToExcel
+  exportSellersToExcel,
+  exportAssistantsToExcel,
+  getAdminProfile,
+  dbUpsertAdminProfile
 } from './databaseService';
 
 // Re-export seedDatabaseIfEmpty as a no-op / compatibility helper

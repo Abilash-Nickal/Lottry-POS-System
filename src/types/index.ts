@@ -23,6 +23,7 @@ export interface Assistant {
   winningVouchers: number;
   totalOrdersToday: number;
   avatarBg: string;
+  avatarId?: string;
 }
 
 export interface Seller {
@@ -36,6 +37,15 @@ export interface Seller {
   currentCredit: number;
   assignedAssistant: string;
   isFrozen: boolean;
+  avatarId?: string;
+}
+
+export interface AdminProfile {
+  id: string;
+  name: string;
+  title: string;
+  phone?: string;
+  avatarId?: string;
 }
 
 export interface SalesItem {

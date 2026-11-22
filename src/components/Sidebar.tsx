@@ -14,8 +14,9 @@ import {
   Tag,
   Users
 } from 'lucide-react';
-import { StepType, Assistant } from '../types';
+import { StepType, Assistant, AdminProfile } from '../types';
 import { COMPANY_CONFIG } from '../constants/companyConfig';
+import { AvatarDisplay } from './AvatarDisplay';
 
 export type AdminTabType = 'overview' | 'pricing' | 'sellers' | 'assistants' | 'ledger';
 
@@ -24,6 +25,7 @@ interface SidebarProps {
   setCurrentStep: (step: StepType) => void;
   authenticatedRole: 'admin' | 'assistant' | null;
   currentAssistant: Assistant;
+  adminProfile?: AdminProfile;
   onSwitchUser: () => void;
   activeActionId?: '3.1' | '3.2' | '3.3' | '3.4' | '3.5';
   onSelectAction?: (actionId: '3.1' | '3.2' | '3.3' | '3.4' | '3.5') => void;
@@ -37,6 +39,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setCurrentStep,
   authenticatedRole,
   currentAssistant,
+  adminProfile,
   onSwitchUser,
   activeActionId,
   onSelectAction,
@@ -300,26 +303,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="pt-6 border-t border-gray-200/80 space-y-3">
         <div className="glass-panel-elevated border border-gray-200/90 rounded-2xl p-3 flex items-center justify-between shadow-sm">
           <div className="flex items-center gap-3 min-w-0">
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs shrink-0 shadow-sm ${
-              authenticatedRole === 'admin' 
-                ? 'bg-orange-500 text-white' 
-                : currentAssistant?.avatarBg || 'bg-amber-500 text-white'
-            }`}>
-              {authenticatedRole === 'admin' ? 'චි' : currentAssistant?.id?.replace('ast', '#') || '#1'}
-            </div>
+            <AvatarDisplay
+              avatarId={authenticatedRole === 'admin' ? (adminProfile?.avatarId || 'char-01') : (currentAssistant?.avatarId || 'char-02')}
+              name={authenticatedRole === 'admin' ? (adminProfile?.name || 'Admin') : currentAssistant?.shortName}
+              size="sm"
+            />
             <div className="min-w-0">
               <h4 className="text-xs font-bold text-gray-900 truncate">
-                {authenticatedRole === 'admin' ? 'W.M.G. චිත්රා වීරකෝන්' : currentAssistant?.shortName}
+                {authenticatedRole === 'admin' ? (adminProfile?.name || 'W.M.G. චිත්රා වීරකෝන්') : currentAssistant?.shortName}
               </h4>
               <p className="text-[10px] text-gray-500 truncate">
-                {authenticatedRole === 'admin' ? 'ලොතරැයි බෙදාහැරීම් කාර්යාලය • දෙහිඅත්තකණ්ඩිය' : currentAssistant?.route?.split('/')[0]}
+                {authenticatedRole === 'admin' ? (adminProfile?.title || 'ලොතරැයි බෙදාහැරීම් කාර්යාලය • දෙහිඅත්තකණ්ඩිය') : currentAssistant?.route?.split('/')[0]}
               </p>
             </div>
           </div>
 
           <button
             onClick={onSwitchUser}
-            className="p-2 rounded-xl glass-panel hover:bg-rose-50 text-gray-500 hover:text-rose-600 transition-colors border border-gray-200"
+            className="p-2 rounded-xl glass-panel hover:bg-rose-50 text-gray-500 hover:text-rose-600 transition-colors border border-gray-200 cursor-pointer"
             title="Switch User / Logout"
           >
             <LogOut className="w-4 h-4" />

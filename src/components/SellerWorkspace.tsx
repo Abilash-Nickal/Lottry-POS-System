@@ -5,30 +5,33 @@ import {
   MapPin, 
   Phone, 
   Lock, 
-  CreditCard, 
-  ShieldCheck, 
-  Wallet, 
-  TrendingUp, 
-  Sparkles, 
   ShoppingBag, 
   RotateCcw, 
   Trophy, 
   Ticket, 
   Banknote, 
+  Calendar, 
+  Check, 
+  AlertTriangle, 
+  Plus, 
+  Minus, 
+  X, 
+  Printer, 
+  Receipt, 
+  History, 
   ChevronRight, 
-  FileText, 
-  Printer,
-  Calendar,
-  Zap,
-  Check,
-  AlertTriangle,
-  ArrowUpRight,
-  ArrowDownRight,
-  Receipt
+  Sparkles, 
+  ShieldCheck,
+  CreditCard
 } from 'lucide-react';
 import { Seller, Assistant, Transaction, LotteryBrand, ForwardDay } from '../types';
 import { formatLKR, getForward7Days } from '../utils/formatters';
 import { RecentLedgerPage } from './RecentLedgerPage';
+import { AvatarDisplay } from './AvatarDisplay';
+import { ReturnModal } from './ActionModals/ReturnModal';
+import { WinningModal } from './ActionModals/WinningModal';
+import { NonWinningModal } from './ActionModals/NonWinningModal';
+import { CashModal } from './ActionModals/CashModal';
 
 interface SellerWorkspaceProps {
   currentSeller: Seller;
@@ -93,29 +96,23 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
   onConfirmWinning,
   onConfirmNonWinning,
   onConfirmCash,
-  activeActionId: externalActiveActionId,
+  activeActionId,
   onSelectActionId
 }) => {
-  // Dedicated Full Page View for Recent Ledger Activity
+  // Toggle for full-page ledger view
   const [showLedgerPage, setShowLedgerPage] = useState(false);
 
-  // Master-Detail Active Action State
-  const [internalActionId, setInternalActionId] = useState<'3.1' | '3.2' | '3.3' | '3.4' | '3.5'>('3.1');
-  const activeAction = externalActiveActionId || internalActionId;
+  // Active Pop-up Screen Modal ('SALE' | 'RETURN' | 'WINNING' | 'NON_WINNING' | 'CASH' | null)
+  const [activeModal, setActiveModal] = useState<'SALE' | 'RETURN' | 'WINNING' | 'NON_WINNING' | 'CASH' | null>(null);
 
-  const setActiveAction = (id: '3.1' | '3.2' | '3.3' | '3.4' | '3.5') => {
-    setInternalActionId(id);
-    if (onSelectActionId) onSelectActionId(id);
-  };
-
+  // Financial Metrics
   const currentCredit = currentSeller.currentCredit;
   const creditLimit = currentSeller.creditLimit;
   const availableCredit = Math.max(0, creditLimit - currentCredit);
   const percent = Math.min(100, Math.round((currentCredit / (creditLimit || 1)) * 100));
-  const isExceeded = currentCredit > creditLimit;
 
   // --------------------------------------------------------------------------
-  // ACTION 3.1 STATE & LOGIC: SALE & DISPATCH
+  // TICKET SALE & DISPATCH POP-UP MODAL STATE & LOGIC
   // --------------------------------------------------------------------------
   const [saleCategory, setSaleCategory] = useState<'daily' | 'scratch'>('daily');
   const forwardDays = useMemo(() => getForward7Days(), []);
@@ -153,6 +150,66 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
     return { totalPacks, totalTickets, totalBill, projectedCredit, isProjectedExceeded, excess };
   }, [saleTicketCounts, brands, currentSeller]);
 
+  // Live session reconciliation totals aggregated across today's transactions for this seller
+  const sessionBreakdown = useMemo(() => {
+    let grossBill = 0;
+    let grossPacks = 0;
+    let grossTickets = 0;
+
+    let returnRefund = 0;
+    let returnPacks = 0;
+
+    let winningOffset = 0;
+    let winningCount = 0;
+
+    let nonWinningReimburse = 0;
+    let nonWinningStubs = 0;
+
+    let cashCollected = 0;
+
+    sellerTransactions.forEach(t => {
+      if (t.actionType?.includes('SALE') || (t.typeLabel && t.typeLabel.includes('Sale')) || t.deltaCredit > 0) {
+        grossBill += t.deltaCredit;
+        grossPacks += t.details?.totalPacks || 0;
+        grossTickets += t.details?.totalTickets || (t.details?.totalPacks ? t.details.totalPacks * 100 : 0);
+      } else if (t.actionType?.includes('RETURN') || (t.typeLabel && t.typeLabel.includes('Return'))) {
+        returnRefund += Math.abs(t.deltaCredit);
+        returnPacks += t.details?.totalPacks || 1;
+      } else if (t.actionType?.includes('WINNING') || (t.typeLabel && t.typeLabel.includes('Winning'))) {
+        winningOffset += Math.abs(t.deltaCredit);
+        winningCount += 1;
+      } else if (t.actionType?.includes('NON_WINNING') || (t.typeLabel && t.typeLabel.includes('Non-Winning'))) {
+        nonWinningReimburse += Math.abs(t.deltaCredit);
+        nonWinningStubs += parseInt(t.details?.stubCount) || 0;
+      } else if (t.actionType?.includes('CASH') || (t.typeLabel && t.typeLabel.includes('Cash'))) {
+        cashCollected += Math.abs(t.deltaCredit);
+      }
+    });
+
+    const totalOffsets = returnRefund + winningOffset + nonWinningReimburse + cashCollected;
+    const netBill = Math.max(0, grossBill - totalOffsets);
+
+    // Starting credit before today's transactions
+    const sortedTxns = [...sellerTransactions].reverse();
+    const prevBalance = sortedTxns.length > 0 ? sortedTxns[0].previousCredit : currentSeller.currentCredit;
+
+    return {
+      grossBill,
+      grossPacks,
+      grossTickets,
+      returnRefund,
+      returnPacks,
+      winningOffset,
+      winningCount,
+      nonWinningReimburse,
+      nonWinningStubs,
+      cashCollected,
+      totalOffsets,
+      netBill,
+      prevBalance
+    };
+  }, [sellerTransactions, currentSeller]);
+
   const handleExecuteSale = () => {
     if (saleMath.totalPacks <= 0 || saleMath.isProjectedExceeded) return;
 
@@ -182,151 +239,38 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
       dispatchNote: saleDispatchNote
     });
 
-    // Reset local sale form
+    // Reset local sale form & close pop-up modal
     setSaleTicketCounts({});
     setSaleDispatchNote('');
+    setActiveModal(null);
   };
 
-  // --------------------------------------------------------------------------
-  // ACTION 3.2 STATE & LOGIC: PACK RETURN
-  // --------------------------------------------------------------------------
-  const [returnCart, setReturnCart] = useState<Record<string, number>>({});
-  const [returnReason, setReturnReason] = useState('Unsold pre-draw return');
-  const [returnSerialBatch, setReturnSerialBatch] = useState('');
-
-  const returnTotals = useMemo(() => {
-    let totalPacks = 0;
-    let totalRefund = 0;
-
-    Object.entries(returnCart).forEach(([brandId, count]) => {
-      const qty = count || 0;
-      if (qty > 0) {
-        const brand = brands.find(b => b.id === brandId);
-        if (brand) {
-          const tierPrice = currentSeller.tier === 'Tier A' ? brand.tierAPrice : brand.tierBPrice;
-          const tickets = qty * brand.stockPerPack;
-          totalPacks += qty;
-          totalRefund += tickets * tierPrice;
-        }
+  const handleUpdatePackQty = (brandId: string, delta: number) => {
+    setSaleTicketCounts(prev => {
+      const current = prev[brandId] || 0;
+      const next = Math.max(0, current + delta);
+      if (next === 0) {
+        const clone = { ...prev };
+        delete clone[brandId];
+        return clone;
       }
+      return { ...prev, [brandId]: next };
     });
-
-    const projectedCredit = Math.max(0, currentSeller.currentCredit - totalRefund);
-    return { totalPacks, totalRefund, projectedCredit };
-  }, [returnCart, brands, currentSeller]);
-
-  const handleExecuteReturn = () => {
-    if (returnTotals.totalPacks <= 0) return;
-
-    const returnItems = Object.entries(returnCart)
-      .filter(([_, qty]) => qty > 0)
-      .map(([brandId, qty]) => {
-        const brand = brands.find(b => b.id === brandId)!;
-        const tierPrice = currentSeller.tier === 'Tier A' ? brand.tierAPrice : brand.tierBPrice;
-        return {
-          brandName: brand.name,
-          packs: qty,
-          rate: tierPrice,
-          subtotal: qty * brand.stockPerPack * tierPrice
-        };
-      });
-
-    onConfirmReturn({
-      returnItems,
-      totalPacks: returnTotals.totalPacks,
-      totalRefund: returnTotals.totalRefund,
-      reason: returnReason,
-      batchRef: returnSerialBatch
-    });
-
-    setReturnCart({});
-    setReturnSerialBatch('');
   };
 
-  // --------------------------------------------------------------------------
-  // ACTION 3.3 STATE & LOGIC: WINNING TICKETS
-  // --------------------------------------------------------------------------
-  const [winningAmounts, setWinningAmounts] = useState<Record<string, string>>({
-    tier40: '',
-    tier100: '',
-    tier500: '',
-    tier1000: '',
-    tier5000: '',
-    customPrize: ''
-  });
-  const [winningEnvelopeNo, setWinningEnvelopeNo] = useState(`ENV-${Math.floor(100 + Math.random() * 900)}`);
-  const [winningTicketCount, setWinningTicketCount] = useState('');
-
-  const totalWinningAmount = useMemo(() => {
-    const t40 = (parseInt(winningAmounts.tier40) || 0) * 40;
-    const t100 = (parseInt(winningAmounts.tier100) || 0) * 100;
-    const t500 = (parseInt(winningAmounts.tier500) || 0) * 500;
-    const t1000 = (parseInt(winningAmounts.tier1000) || 0) * 1000;
-    const t5000 = (parseInt(winningAmounts.tier5000) || 0) * 5000;
-    const custom = parseFloat(winningAmounts.customPrize) || 0;
-    return t40 + t100 + t500 + t1000 + t5000 + custom;
-  }, [winningAmounts]);
-
-  const handleExecuteWinning = () => {
-    if (totalWinningAmount <= 0) return;
-    onConfirmWinning({
-      totalWinningOffset: totalWinningAmount,
-      envelopeNo: winningEnvelopeNo,
-      ticketCount: winningTicketCount || 'Assorted Prize Vouchers',
-      breakdown: winningAmounts
+  const handleSetPackQty = (brandId: string, qty: number) => {
+    setSaleTicketCounts(prev => {
+      const next = Math.max(0, isNaN(qty) ? 0 : qty);
+      if (next === 0) {
+        const clone = { ...prev };
+        delete clone[brandId];
+        return clone;
+      }
+      return { ...prev, [brandId]: next };
     });
-
-    setWinningAmounts({ tier40: '', tier100: '', tier500: '', tier1000: '', tier5000: '', customPrize: '' });
-    setWinningTicketCount('');
   };
 
-  // --------------------------------------------------------------------------
-  // ACTION 3.4 STATE & LOGIC: NON-WINNING STUBS
-  // --------------------------------------------------------------------------
-  const [nonWinningBrandId, setNonWinningBrandId] = useState(brands[0]?.id || 'b1');
-  const [nonWinningStubCount, setNonWinningStubCount] = useState('');
-  const [nonWinningReimburseRate, setNonWinningReimburseRate] = useState('1.50');
-  const [nonWinningSchemeRef, setNonWinningSchemeRef] = useState('Lottery Board Drawback Claim');
-
-  const totalNonWinningReimbursement = useMemo(() => {
-    const stubs = parseInt(nonWinningStubCount) || 0;
-    const rate = parseFloat(nonWinningReimburseRate) || 0;
-    return stubs * rate;
-  }, [nonWinningStubCount, nonWinningReimburseRate]);
-
-  const handleExecuteNonWinning = () => {
-    if (totalNonWinningReimbursement <= 0) return;
-    const brand = brands.find(b => b.id === nonWinningBrandId);
-    onConfirmNonWinning({
-      brandName: brand?.name || 'Lottery',
-      stubCount: nonWinningStubCount,
-      ratePerStub: nonWinningReimburseRate,
-      schemeRef: nonWinningSchemeRef,
-      totalReimbursement: totalNonWinningReimbursement
-    });
-
-    setNonWinningStubCount('');
-  };
-
-  // --------------------------------------------------------------------------
-  // ACTION 3.5 STATE & LOGIC: PAY BY CASH
-  // --------------------------------------------------------------------------
-  const [cashAmount, setCashAmount] = useState('');
-  const [cashReference, setCashReference] = useState('');
-  const parsedCashAmount = parseFloat(cashAmount) || 0;
-
-  const handleExecuteCash = () => {
-    if (parsedCashAmount <= 0) return;
-    onConfirmCash({
-      cashAmount: parsedCashAmount,
-      reference: cashReference || 'Route Cash Collection'
-    });
-
-    setCashAmount('');
-    setCashReference('');
-  };
-
-  // If viewing dedicated Recent Ledger Activity Page
+  // Full-page ledger view
   if (showLedgerPage) {
     return (
       <RecentLedgerPage
@@ -340,28 +284,42 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
   }
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden gap-2.5 animate-in fade-in duration-300 text-[#26201D]">
+    <div className="h-full flex flex-col min-h-0 overflow-y-auto gap-3 text-[#26201D] animate-in fade-in duration-200">
       
       {/* ---------------------------------------------------------------- */}
-      {/* 1. TOP HEADER BANNER (FIGMA MATCHING WARM CREAM CARD)             */}
+      {/* 1. TOP CUSTOMER / SELLER BANNER (MATCHES USER IMAGE EXACTLY)       */}
       {/* ---------------------------------------------------------------- */}
-      <div className="figma-card rounded-2xl p-3 sm:p-3.5 shadow-xs flex flex-col xl:flex-row xl:items-center justify-between gap-3 border border-[#E6DDD4] bg-[#FAF8F5] shrink-0">
+      <div className="rounded-2xl p-3.5 sm:p-4 shadow-xs flex flex-col xl:flex-row xl:items-center justify-between gap-3.5 border border-[#E6DDD4] bg-[#FAF8F5] shrink-0">
         
         {/* RETAILER INFO */}
-        <div className="space-y-1">
-          <div className="flex items-center gap-2.5">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
             <button
               onClick={onBackToDirectory}
-              className="px-3 py-1 rounded-xl bg-white hover:bg-[#F5EFEB] text-[#26201D] flex items-center gap-1.5 border border-[#E6DDD4] text-xs font-bold transition-all shadow-xs"
-              title="Back to Directory"
+              className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#F5EFEB] text-[#26201D] flex items-center gap-1.5 border border-[#E6DDD4] text-xs font-bold transition-all shadow-xs cursor-pointer"
+              title="Back to Retailer Directory"
             >
               <ArrowLeft className="w-3.5 h-3.5 text-[#26201D]" />
               <span>Directory</span>
             </button>
 
-            <div className="w-8 h-8 rounded-xl bg-[#FAF0E9] border border-[#F4DEC9] text-[#D68A64] flex items-center justify-center shrink-0">
-              <Store className="w-4 h-4" />
-            </div>
+            {/* Small icon on banner to access Recent Ledger in a new page */}
+            <button
+              onClick={() => setShowLedgerPage(true)}
+              className="p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-white hover:bg-[#F5EFEB] text-[#26201D] flex items-center gap-1.5 border border-[#E6DDD4] text-xs font-bold transition-all shadow-xs cursor-pointer"
+              title="Open Recent Ledger & Audit History in full page"
+            >
+              <History className="w-3.5 h-3.5 text-[#D64933]" />
+              <span className="hidden sm:inline">Ledger History</span>
+            </button>
+
+            <AvatarDisplay
+              avatarId={currentSeller.avatarId || 'char-06'}
+              name={currentSeller.name}
+              size="md"
+              showBadge={true}
+              className="shrink-0"
+            />
 
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-xl sm:text-2xl font-black text-[#26201D] tracking-tight">
@@ -394,10 +352,10 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
           </div>
         </div>
 
-        {/* TOP RIGHT FINANCIAL METRICS (3 DISTINCT CARDS AS IN FIGMA) */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 shrink-0">
+        {/* TOP RIGHT FINANCIAL METRICS (3 DISTINCT CARDS AS IN SCREENSHOT) */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 shrink-0">
           {/* Card 1: Debt */}
-          <div className="bg-[#FDF2F0] border border-[#F9C9C2] rounded-xl p-2.5 min-w-[140px]">
+          <div className="bg-[#FDF2F0] border border-[#F9C9C2] rounded-xl p-2.5 min-w-[145px]">
             <span className="text-[9px] font-bold text-[#D64933] uppercase tracking-wider block">
               Current Debt Balance
             </span>
@@ -407,7 +365,7 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
           </div>
 
           {/* Card 2: Credit Limit */}
-          <div className="bg-[#F0FDF4] border border-[#BBF7D0] rounded-xl p-2.5 min-w-[140px]">
+          <div className="bg-[#F0FDF4] border border-[#BBF7D0] rounded-xl p-2.5 min-w-[145px]">
             <span className="text-[9px] font-bold text-[#16A34A] uppercase tracking-wider block">
               Assigned Credit Limit
             </span>
@@ -417,7 +375,7 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
           </div>
 
           {/* Card 3: Available Room + Progress */}
-          <div className="bg-white border border-[#E6DDD4] rounded-xl p-2.5 min-w-[140px] flex flex-col justify-between">
+          <div className="bg-white border border-[#E6DDD4] rounded-xl p-2.5 min-w-[145px] flex flex-col justify-between">
             <div className="flex justify-between items-center">
               <span className="text-[9px] font-bold text-[#7F7266] uppercase tracking-wider">
                 Available Room
@@ -442,1294 +400,562 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
       </div>
 
       {/* ---------------------------------------------------------------- */}
-      {/* 2. HORIZONTAL ACTION NAVIGATION BAR (MATCHING FIGMA PILLS)        */}
+      {/* 2. ORDER BREAKDOWN & ACTION BUTTONS LIST (CENTERED & FOCUSED)    */}
       {/* ---------------------------------------------------------------- */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-0.5 select-none shrink-0">
-        {/* 3.1 Sale & Dispatch */}
-        <button
-          onClick={() => setActiveAction('3.1')}
-          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shadow-xs ${
-            activeAction === '3.1'
-              ? 'bg-[#D64933] text-white shadow-sm shadow-[#D64933]/20 font-extrabold'
-              : 'bg-white hover:bg-[#F5EFEB] text-[#26201D] border border-[#E6DDD4]'
-          }`}
-        >
-          <ShoppingBag className="w-3.5 h-3.5" />
-          <span>Sale & Dispatch</span>
-          {activeAction === '3.1' && (
-            <span className="bg-white/20 text-white text-[8px] font-black px-1.5 py-0.2 rounded uppercase ml-1">
-              Active
-            </span>
-          )}
-        </button>
-
-        {/* 3.2 Pack Return */}
-        <button
-          onClick={() => setActiveAction('3.2')}
-          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shadow-xs ${
-            activeAction === '3.2'
-              ? 'bg-[#D64933] text-white shadow-sm shadow-[#D64933]/20 font-extrabold'
-              : 'bg-white hover:bg-[#F5EFEB] text-[#26201D] border border-[#E6DDD4]'
-          }`}
-        >
-          <RotateCcw className="w-3.5 h-3.5" />
-          <span>Pack Return</span>
-          {activeAction === '3.2' && (
-            <span className="bg-white/20 text-white text-[8px] font-black px-1.5 py-0.2 rounded uppercase ml-1">
-              Active
-            </span>
-          )}
-        </button>
-
-        {/* 3.3 Winning Tickets */}
-        <button
-          onClick={() => setActiveAction('3.3')}
-          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shadow-xs ${
-            activeAction === '3.3'
-              ? 'bg-[#D64933] text-white shadow-sm shadow-[#D64933]/20 font-extrabold'
-              : 'bg-white hover:bg-[#F5EFEB] text-[#26201D] border border-[#E6DDD4]'
-          }`}
-        >
-          <Trophy className="w-3.5 h-3.5" />
-          <span>Winning Tickets</span>
-          {activeAction === '3.3' && (
-            <span className="bg-white/20 text-white text-[8px] font-black px-1.5 py-0.2 rounded uppercase ml-1">
-              Active
-            </span>
-          )}
-        </button>
-
-        {/* 3.4 Non-Winning Audit */}
-        <button
-          onClick={() => setActiveAction('3.4')}
-          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shadow-xs ${
-            activeAction === '3.4'
-              ? 'bg-[#D64933] text-white shadow-sm shadow-[#D64933]/20 font-extrabold'
-              : 'bg-white hover:bg-[#F5EFEB] text-[#26201D] border border-[#E6DDD4]'
-          }`}
-        >
-          <Ticket className="w-3.5 h-3.5" />
-          <span>Non-Winning Audit</span>
-          {activeAction === '3.4' && (
-            <span className="bg-white/20 text-white text-[8px] font-black px-1.5 py-0.2 rounded uppercase ml-1">
-              Active
-            </span>
-          )}
-        </button>
-
-        {/* 3.5 Pay by Cash */}
-        <button
-          onClick={() => setActiveAction('3.5')}
-          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shadow-xs ${
-            activeAction === '3.5'
-              ? 'bg-[#D64933] text-white shadow-sm shadow-[#D64933]/20 font-extrabold'
-              : 'bg-white hover:bg-[#F5EFEB] text-[#26201D] border border-[#E6DDD4]'
-          }`}
-        >
-          <Banknote className="w-3.5 h-3.5" />
-          <span>Pay by Cash</span>
-          {activeAction === '3.5' && (
-            <span className="bg-white/20 text-white text-[8px] font-black px-1.5 py-0.2 rounded uppercase ml-1">
-              Active
-            </span>
-          )}
-        </button>
-      </div>
-
-      {/* ---------------------------------------------------------------- */}
-      {/* 3. TWO-COLUMN WORKSPACE BODY (MATCHING FIGMA 2-COLUMN LAYOUT)     */}
-      {/* ---------------------------------------------------------------- */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-2.5 sm:gap-3 items-stretch overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-start py-2">
         
-        {/* ============================================================= */}
-        {/* COLUMN LEFT (LG:COL-SPAN-8): ACTIVE ACTION FORM               */}
-        {/* ============================================================= */}
-        <div className="lg:col-span-8 w-full min-w-0 border border-[#E6DDD4] shadow-xs bg-[#FAF8F5] rounded-2xl p-3 sm:p-4 h-full flex flex-col min-h-0 overflow-hidden relative z-0">
+        {/* THE ORDERING ELEMENTS LIST CARD (EXACTLY LIKE USER IMAGE) */}
+        <div className="max-w-xl w-full space-y-3">
+          
+          <div className="rounded-3xl border border-[#E6DDD4] bg-[#FAF8F5] p-4 sm:p-5 shadow-xs space-y-3.5">
             
-            {/* SUB-PAGE 3.1: SALE & DISPATCH */}
-            {activeAction === '3.1' && (
-              <div className="h-full flex flex-col min-h-0 gap-2.5 animate-in fade-in duration-200">
-                {/* Header Card */}
-                <div className="flex items-center justify-between shrink-0">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-[#FAF0E9] border border-[#F4DEC9] text-[#D68A64] flex items-center justify-center font-bold shadow-xs">
-                      <ShoppingBag className="w-4 h-4 text-[#D68A64]" />
-                    </div>
-                    <div>
-                      <h4 className="text-base font-black text-[#26201D]">
-                        Ticket Sale & Dispatch
-                      </h4>
-                      <p className="text-[11px] text-[#7F7266] font-medium">
-                        Allocate daily lottery draw packs & instant scratch cards for retailer distribution
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      setSaleTicketCounts({});
-                      setSaleDispatchNote('');
-                    }}
-                    className="p-1.5 rounded-lg text-[#9F9184] hover:text-[#26201D] hover:bg-[#F5EFEB] transition-colors"
-                    title="Reset Form"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                  </button>
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-[#FAF0E9] border border-[#F4DEC9] text-[#D64933] flex items-center justify-center shrink-0">
+                  <Receipt className="w-4 h-4 text-[#D64933]" />
                 </div>
-
-                {/* Category Switcher (2 Wide Tabs as in Figma) */}
-                <div className="grid grid-cols-2 gap-2.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setSaleCategory('daily')}
-                    className={`py-2 px-3.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-                      saleCategory === 'daily'
-                        ? 'border-2 border-[#D64933] bg-white text-[#D64933] shadow-xs'
-                        : 'border border-[#E6DDD4] bg-white text-[#7F7266] hover:bg-[#FAF8F5]'
-                    }`}
-                  >
-                    <Calendar className={`w-4 h-4 ${saleCategory === 'daily' ? 'text-[#D64933]' : 'text-[#7F7266]'}`} />
-                    <span>Daily Draw Lotteries (100-pack)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setSaleCategory('scratch')}
-                    className={`py-2 px-3.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-                      saleCategory === 'scratch'
-                        ? 'border-2 border-[#D64933] bg-white text-[#D64933] shadow-xs'
-                        : 'border border-[#E6DDD4] bg-white text-[#7F7266] hover:bg-[#FAF8F5]'
-                    }`}
-                  >
-                    <Zap className={`w-4 h-4 ${saleCategory === 'scratch' ? 'text-[#D64933]' : 'text-[#D68A64]'}`} />
-                    <span>Instant Scratch Cards</span>
-                  </button>
-                </div>
-
-                {/* Draw Date Allocation - ONLY for Daily Draw! (Hidden for Instant Scratch Cards) */}
-                {saleCategory === 'daily' && (
-                  <div className="space-y-1.5 shrink-0">
-                    <div className="flex items-center justify-between text-xs font-bold">
-                      <span className="text-[10px] text-[#7F7266] uppercase tracking-wider">
-                        Draw Date Allocation
-                      </span>
-                      <span className="text-xs text-[#D64933] font-bold">
-                        Selected: {selectedSaleDay.isToday ? 'Today' : `Today + ${selectedSaleDay.dayIndex - 1}`} ({selectedSaleDay.weekday}, {selectedSaleDay.dayMonthStr})
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-7 gap-1.5">
-                      {forwardDays.slice(0, 7).map((d, idx) => {
-                        const isSelected = selectedSaleDay.dayIndex === d.dayIndex;
-                        const labelTop = idx === 0 ? 'Today' : `Today + ${idx}`;
-                        return (
-                          <button
-                            key={d.dayIndex}
-                            type="button"
-                            onClick={() => setSelectedSaleDay(d)}
-                            className={`py-1.5 px-1 rounded-xl text-center border transition-all flex flex-col items-center justify-center leading-tight ${
-                              isSelected
-                                ? 'bg-[#D64933] text-white border-[#D64933] shadow-sm shadow-[#D64933]/20 font-black'
-                                : 'bg-white hover:bg-[#F5EFEB] border-[#E6DDD4] text-[#26201D]'
-                            }`}
-                          >
-                            <span className={`text-[10px] font-extrabold tracking-tight ${isSelected ? 'text-white' : 'text-[#D64933]'}`}>
-                              {labelTop}
-                            </span>
-                            <span className="text-xs font-black tracking-tight my-0.5">
-                              {d.dayMonthStr}
-                            </span>
-                            <span className={`text-[9px] font-semibold ${isSelected ? 'text-white/80' : 'text-[#7F7266]'}`}>
-                              {d.weekday.slice(0, 3)}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Brands Pack Allocator Header */}
-                <div className="flex items-center justify-between text-xs font-bold shrink-0 pt-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-[#7F7266] uppercase tracking-wider font-extrabold">
-                      Select Brands & Pack Quantities
-                    </span>
-                    <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-[#FAF0E9] text-[#D64933] border border-[#F4DEC9]">
-                      {categoryBrands.length} Brands Available
-                    </span>
-                  </div>
-                  <span className="text-[11px] font-mono text-[#7F7266]">
-                    Depot Batch: #COL-2024-04F
+                <div>
+                  <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-stone-900 block leading-tight">
+                    Full Order & Bill Breakdown
+                  </h3>
+                  <span className="text-[11px] text-[#7F7266] font-medium">
+                    Live Session Reconciliation
                   </span>
                 </div>
-                
-                {/* Scrollable Brands List inside Left Column (Scrollable for 10+ tickets) */}
-                <div 
-                  className="flex-1 min-h-[220px] max-h-[360px] sm:max-h-[420px] lg:max-h-[480px] overflow-y-scroll space-y-2 pr-2 custom-scrollbar rounded-xl focus:outline-none"
-                  tabIndex={0}
-                  style={{ scrollbarGutter: 'stable' }}
-                >
-                  {categoryBrands.map((brand) => {
-                    const tierPrice = currentSeller.tier === 'Tier A' ? brand.tierAPrice : brand.tierBPrice;
-                    const count = saleTicketCounts[brand.id] || 0;
-                    const subtotal = count * brand.stockPerPack * tierPrice;
+              </div>
 
-                    return (
-                      <div
-                        key={brand.id}
-                        className="p-3 rounded-2xl bg-white border border-[#E6DDD4] hover:border-[#D68A64] flex items-center justify-between gap-3 shadow-2xs transition-all"
-                      >
-                        {/* Left: Brand Emblem + Details */}
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-12 h-8 rounded-full bg-gradient-to-r from-purple-800 to-indigo-900 border-2 border-amber-400 text-amber-300 flex items-center justify-center font-bold text-[9px] shadow-xs shrink-0 tracking-tighter">
-                            {brand.name.slice(0, 8)}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <h5 className="font-extrabold text-sm text-[#26201D] truncate">{brand.name}</h5>
-                              <span className="text-[9px] text-[#7F7266] font-bold px-1.5 py-0.5 rounded-md bg-[#FAF0E9] border border-[#E6DDD4]">
-                                {brand.stockPerPack} TIX/PACK
-                              </span>
-                            </div>
-                            <span className="text-[11px] text-[#7F7266] block font-medium mt-0.5">
-                              Rate: <strong className="text-[#26201D]">{formatLKR(tierPrice)}/tix</strong> • Pack: {formatLKR(tierPrice * brand.stockPerPack)}
-                            </span>
-                          </div>
-                        </div>
+              <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-[#FAF0E9] text-[#D64933] border border-[#F4DEC9] font-mono">
+                {sessionBreakdown.grossPacks} Packs
+              </span>
+            </div>
 
-                        {/* Right: Counter + Line Subtotal */}
-                        <div className="flex items-center gap-4 shrink-0">
-                          <div className="flex items-center gap-1 bg-[#FAF8F5] border border-[#E6DDD4] rounded-xl p-1">
-                            <button
-                              type="button"
-                              onClick={() => setSaleTicketCounts(prev => ({ ...prev, [brand.id]: Math.max(0, count - 1) }))}
-                              className="w-7 h-7 rounded-lg bg-white hover:bg-[#F2ECE4] text-[#26201D] flex items-center justify-center font-bold text-sm border border-[#E6DDD4] shadow-xs transition-all"
-                            >
-                              –
-                            </button>
-                            <input
-                              type="number"
-                              min="0"
-                              value={count === 0 ? '' : count}
-                              placeholder="0"
-                              onChange={(e) => {
-                                const val = parseInt(e.target.value) || 0;
-                                setSaleTicketCounts(prev => ({ ...prev, [brand.id]: Math.max(0, val) }));
-                              }}
-                              className="w-9 text-center text-xs font-black text-[#26201D] bg-transparent focus:outline-none font-mono"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setSaleTicketCounts(prev => ({ ...prev, [brand.id]: count + 1 }))}
-                              className="w-7 h-7 rounded-lg bg-[#D64933] hover:bg-[#BE3823] text-white flex items-center justify-center font-bold text-sm transition-colors shadow-xs"
-                            >
-                              +
-                            </button>
-                          </div>
-
-                          <div className="text-right min-w-[80px]">
-                            <span className="text-[8px] font-bold text-[#7F7266] uppercase block">
-                              Line Subtotal
-                            </span>
-                            <span className="font-mono font-black text-xs text-[#26201D] block mt-0.5">
-                              {formatLKR(subtotal)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Bottom of Action 3.1: Note + Warning (shrink-0) */}
-                <div className="shrink-0 space-y-1.5 pt-1">
-                  <input
-                    type="text"
-                    placeholder="Optional dispatch note / route reference..."
-                    value={saleDispatchNote}
-                    onChange={(e) => setSaleDispatchNote(e.target.value)}
-                    className="w-full bg-white border border-[#E6DDD4] rounded-xl px-3 py-1.5 text-xs text-[#26201D] placeholder-[#9F9184] focus:outline-none focus:border-[#D64933] transition-colors shadow-xs"
-                  />
-
-                  {saleMath.isProjectedExceeded && (
-                    <div className="p-2.5 rounded-xl bg-[#FDF2F0] border border-[#F9C9C2] text-[#D64933] text-xs flex items-center gap-2">
-                      <AlertTriangle className="w-4 h-4 shrink-0 text-[#D64933]" />
-                      <span>
-                        <strong>Credit Ceilings Exceeded!</strong> This dispatch exceeds limit by{' '}
-                        <strong>{formatLKR(saleMath.excess)}</strong>.
-                      </span>
-                    </div>
-                  )}
+            {/* Big Prominent Full Bill Amount Highlight */}
+            <div className="p-3.5 rounded-2xl bg-white border border-[#E6DDD4] space-y-1">
+              <div className="flex justify-between items-baseline">
+                <span className="text-xs font-black uppercase tracking-wider text-stone-600">
+                  Full Bill Amount (Net):
+                </span>
+                <div className="text-2xl sm:text-3xl font-black text-stone-900 font-mono tracking-tight">
+                  <span className="text-xs font-bold text-stone-500 mr-1">LKR</span>
+                  {formatLKR(sessionBreakdown.netBill).replace('LKR', '').trim()}
                 </div>
               </div>
-            )}
+              <div className="flex justify-between items-center text-[11px] text-stone-500 font-medium pt-1 border-t border-stone-100">
+                <span>Gross: LKR {formatLKR(sessionBreakdown.grossBill).replace('LKR', '').trim()}</span>
+                <span>Offsets: -LKR {formatLKR(sessionBreakdown.totalOffsets).replace('LKR', '').trim()}</span>
+              </div>
+            </div>
 
-            {/* SUB-PAGE 3.2: PACK RETURN */}
-            {activeAction === '3.2' && (
-              <div className="space-y-6 animate-in fade-in duration-200">
-                <div className="flex items-center justify-between pb-4 border-b border-gray-200">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-cyan-50 text-cyan-700 border border-cyan-200 flex items-center justify-center font-bold shadow-sm">
-                      <RotateCcw className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="text-lg font-black text-gray-900">
-                        Action 3.2 • Unsold Pack Return
-                      </h4>
-                      <p className="text-xs text-gray-500 font-medium">
-                        Accept unsold, un-scratched, or pre-draw ticket packs to credit back the retailer's balance
-                      </p>
-                    </div>
+            {/* ALL ORDERING ELEMENTS LIST (THE 5 ACTION BUTTONS) */}
+            <div className="space-y-2 text-xs">
+              <span className="text-[10px] font-black uppercase tracking-wider text-stone-400 block pl-0.5">
+                All Ordering Elements
+              </span>
+
+              {/* 1. Gross Dispatch */}
+              <div 
+                onClick={() => setActiveModal('SALE')}
+                className="flex items-center justify-between p-3 rounded-2xl bg-white hover:bg-[#F5EFEB] border border-[#E6DDD4] cursor-pointer transition-all shadow-xs group select-none"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-[#FAF0E9] border border-[#F4DEC9] flex items-center justify-center shrink-0">
+                    <ShoppingBag className="w-4 h-4 text-[#D64933]" />
                   </div>
-
-                  <button
-                    onClick={() => {
-                      setReturnCart({});
-                      setReturnSerialBatch('');
-                    }}
-                    className="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-                    title="Reset Form"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                  </button>
+                  <div>
+                    <span className="font-black text-stone-900 block leading-tight">1. Gross Dispatch</span>
+                    <span className="text-[10px] text-stone-500">
+                      {sessionBreakdown.grossPacks} packs ({sessionBreakdown.grossTickets} tix)
+                    </span>
+                  </div>
                 </div>
-
-                <div className="space-y-2">
-                  <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">
-                    Packs Returning by Brand
+                <div className="text-right">
+                  <span className="font-black text-stone-900 font-mono block">
+                    +LKR {formatLKR(sessionBreakdown.grossBill).replace('LKR', '').trim()}
                   </span>
-                  
-                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                    {brands.map((brand) => {
-                      const tierPrice = currentSeller.tier === 'Tier A' ? brand.tierAPrice : brand.tierBPrice;
-                      const count = returnCart[brand.id] || 0;
-                      const subtotal = count * brand.stockPerPack * tierPrice;
-
-                      return (
-                        <div
-                          key={brand.id}
-                          className="p-3.5 rounded-2xl bg-white border border-gray-200 flex items-center justify-between gap-3 text-gray-900 shadow-sm"
-                        >
-                          <div className="min-w-0">
-                            <h5 className="font-bold text-sm text-gray-900 truncate">{brand.name}</h5>
-                            <span className="text-[10px] text-gray-500 block font-medium">
-                              Refund Rate: {formatLKR(tierPrice)}/tix
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-3 shrink-0">
-                            <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-xl p-1">
-                              <button
-                                type="button"
-                                onClick={() => setReturnCart(prev => ({ ...prev, [brand.id]: Math.max(0, count - 1) }))}
-                                className="w-7 h-7 rounded-lg bg-white hover:bg-gray-100 text-gray-700 flex items-center justify-center font-bold text-sm border border-gray-200"
-                              >
-                                –
-                              </button>
-                              <input
-                                type="number"
-                                min="0"
-                                value={count === 0 ? '' : count}
-                                placeholder="0"
-                                onChange={(e) => {
-                                  const val = parseInt(e.target.value) || 0;
-                                  setReturnCart(prev => ({ ...prev, [brand.id]: Math.max(0, val) }));
-                                }}
-                                className="w-12 text-center text-xs font-bold text-gray-900 bg-transparent focus:outline-none"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setReturnCart(prev => ({ ...prev, [brand.id]: count + 1 }))}
-                                className="w-7 h-7 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white flex items-center justify-center font-bold text-sm"
-                              >
-                                +
-                              </button>
-                            </div>
-
-                            <span className="w-24 text-right font-mono font-bold text-xs text-cyan-700">
-                              -{formatLKR(subtotal)}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <input
-                    type="text"
-                    placeholder="Batch / Serial barcode verification..."
-                    value={returnSerialBatch}
-                    onChange={(e) => setReturnSerialBatch(e.target.value)}
-                    className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-2.5 text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:border-orange-500 shadow-sm"
-                  />
-                  <select
-                    value={returnReason}
-                    onChange={(e) => setReturnReason(e.target.value)}
-                    className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-2.5 text-xs text-gray-900 focus:outline-none focus:border-orange-500 shadow-sm"
-                  >
-                    <option value="Unsold pre-draw return">Unsold pre-draw return</option>
-                    <option value="Draw cutoff reached">Draw cutoff reached</option>
-                    <option value="Damaged / Weather spoiled">Damaged / Weather spoiled</option>
-                    <option value="Stock reallocation">Stock reallocation</option>
-                  </select>
-                </div>
-
-                {/* Bottom Confirmation Bar */}
-                <div className="bg-slate-900 text-white rounded-2xl p-4 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-slate-800">
-                  <div>
-                    <span className="text-[10px] text-slate-400 uppercase font-black tracking-wider block">
-                      TOTAL CREDIT REDUCTION
-                    </span>
-                    <div className="text-xl sm:text-2xl font-black text-cyan-400">
-                      -{formatLKR(returnTotals.totalRefund)}
-                      <span className="text-xs text-slate-400 font-medium ml-2">
-                        ({returnTotals.totalPacks} packs returned)
-                      </span>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleExecuteReturn}
-                    disabled={returnTotals.totalPacks <= 0}
-                    className={`px-6 py-3 rounded-full text-xs font-extrabold transition-all flex items-center justify-center gap-2 shadow-md ${
-                      returnTotals.totalPacks > 0
-                        ? 'bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-700 hover:to-teal-700 text-white shadow-cyan-600/25'
-                        : 'bg-slate-800 text-slate-500 cursor-not-allowed shadow-none'
-                    }`}
-                  >
-                    <Check className="w-4 h-4" />
-                    <span>Confirm Pack Return (–Debt Offset)</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* SUB-PAGE 3.3: WINNING TICKETS */}
-            {activeAction === '3.3' && (
-              <div className="space-y-6 animate-in fade-in duration-200">
-                <div className="flex items-center justify-between pb-4 border-b border-gray-200">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center font-bold shadow-sm">
-                      <Trophy className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="text-lg font-black text-gray-900">
-                        Action 3.3 • Pay by Winning Tickets Offset
-                      </h4>
-                      <p className="text-xs text-gray-500 font-medium">
-                        Retailer hands over verified customer prize vouchers. Amount offsets retailer debt and is added to handover vouchers.
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      setWinningAmounts({ tier40: '', tier100: '', tier500: '', tier1000: '', tier5000: '', customPrize: '' });
-                      setWinningTicketCount('');
-                    }}
-                    className="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-                    title="Reset Form"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {/* Denomination Matrix */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {[
-                    { key: 'tier40', label: 'LKR 40 Prize', multiplier: 40 },
-                    { key: 'tier100', label: 'LKR 100 Prize', multiplier: 100 },
-                    { key: 'tier500', label: 'LKR 500 Prize', multiplier: 500 },
-                    { key: 'tier1000', label: 'LKR 1,000 Prize', multiplier: 1000 },
-                    { key: 'tier5000', label: 'LKR 5,000 Prize', multiplier: 5000 },
-                  ].map((denom) => {
-                    const count = parseInt(winningAmounts[denom.key]) || 0;
-                    return (
-                      <div key={denom.key} className="p-3 bg-white rounded-2xl border border-gray-200 shadow-sm space-y-1">
-                        <span className="text-[10px] font-bold text-gray-500 uppercase block">{denom.label}</span>
-                        <div className="flex items-center justify-between">
-                          <input
-                            type="number"
-                            min="0"
-                            placeholder="Qty"
-                            value={winningAmounts[denom.key]}
-                            onChange={(e) => setWinningAmounts(prev => ({ ...prev, [denom.key]: e.target.value }))}
-                            className="w-20 bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-gray-900 focus:outline-none focus:border-orange-500"
-                          />
-                          <span className="text-xs font-mono font-bold text-orange-600">
-                            {formatLKR(count * denom.multiplier)}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  <div className="p-3 bg-orange-50/60 rounded-2xl border border-orange-200 space-y-1">
-                    <span className="text-[10px] font-bold text-orange-700 uppercase block">High Tier / Custom</span>
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="LKR Amount"
-                      value={winningAmounts.customPrize}
-                      onChange={(e) => setWinningAmounts(prev => ({ ...prev, customPrize: e.target.value }))}
-                      className="w-full bg-white border border-orange-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-orange-700 focus:outline-none focus:border-orange-500"
-                    />
-                  </div>
-                </div>
-
-                {/* Envelope No. & Description */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
-                      Sealed Depot Envelope No.
-                    </label>
-                    <input
-                      type="text"
-                      value={winningEnvelopeNo}
-                      onChange={(e) => setWinningEnvelopeNo(e.target.value)}
-                      className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-2.5 text-xs text-gray-900 font-mono font-bold focus:outline-none focus:border-orange-500 shadow-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
-                      Batch Description / Ticket Summary
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. 35 Govisetha + 10 Scratch prize tickets"
-                      value={winningTicketCount}
-                      onChange={(e) => setWinningTicketCount(e.target.value)}
-                      className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-2.5 text-xs text-gray-900 focus:outline-none focus:border-orange-500 shadow-sm"
-                    />
-                  </div>
-                </div>
-
-                {/* Bottom Confirmation Bar */}
-                <div className="bg-slate-900 text-white rounded-2xl p-4 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-slate-800">
-                  <div>
-                    <span className="text-[10px] text-slate-400 uppercase font-black tracking-wider block">
-                      TOTAL PRIZE CLAIM OFFSET
-                    </span>
-                    <div className="text-xl sm:text-2xl font-black text-amber-400">
-                      -{formatLKR(totalWinningAmount)}
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleExecuteWinning}
-                    disabled={totalWinningAmount <= 0}
-                    className={`px-6 py-3 rounded-full text-xs font-extrabold transition-all flex items-center justify-center gap-2 shadow-md ${
-                      totalWinningAmount > 0
-                        ? 'neon-gradient-btn text-white shadow-orange-500/25'
-                        : 'bg-slate-800 text-slate-500 cursor-not-allowed shadow-none'
-                    }`}
-                  >
-                    <Check className="w-4 h-4" />
-                    <span>Confirm Prize Offset (–Debt Offset)</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* SUB-PAGE 3.4: NON-WINNING STUBS */}
-            {activeAction === '3.4' && (
-              <div className="space-y-6 animate-in fade-in duration-200">
-                <div className="flex items-center justify-between pb-4 border-b border-gray-200">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center font-bold shadow-sm">
-                      <Ticket className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="text-lg font-black text-gray-900">
-                        Action 3.4 • Non-Winning Stubs Drawback
-                      </h4>
-                      <p className="text-xs text-gray-500 font-medium">
-                        Lottery board drawback promotional reimbursement credited directly against seller debt
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      setNonWinningStubCount('');
-                    }}
-                    className="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-                    title="Reset Form"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
-                      Lottery Brand
-                    </label>
-                    <select
-                      value={nonWinningBrandId}
-                      onChange={(e) => setNonWinningBrandId(e.target.value)}
-                      className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-2.5 text-xs text-gray-900 focus:outline-none focus:border-orange-500 shadow-sm"
-                    >
-                      {brands.map(b => (
-                        <option key={b.id} value={b.id} className="text-gray-900">{b.name} ({b.type === 'daily' ? 'Daily' : 'Scratch'})</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
-                      Returned Stub Count
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="e.g. 500"
-                      value={nonWinningStubCount}
-                      onChange={(e) => setNonWinningStubCount(e.target.value)}
-                      className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-2.5 text-xs text-gray-900 font-bold focus:outline-none focus:border-orange-500 shadow-sm"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
-                      Reimbursement Rate / Stub (LKR)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.10"
-                      value={nonWinningReimburseRate}
-                      onChange={(e) => setNonWinningReimburseRate(e.target.value)}
-                      className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-2.5 text-xs text-gray-900 font-bold focus:outline-none focus:border-orange-500 shadow-sm"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
-                      Scheme Reference / Batch Code
-                    </label>
-                    <input
-                      type="text"
-                      value={nonWinningSchemeRef}
-                      onChange={(e) => setNonWinningSchemeRef(e.target.value)}
-                      className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-2.5 text-xs text-gray-900 focus:outline-none focus:border-orange-500 shadow-sm"
-                    />
-                  </div>
-                </div>
-
-                {/* Bottom Confirmation Bar */}
-                <div className="bg-slate-900 text-white rounded-2xl p-4 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-slate-800">
-                  <div>
-                    <span className="text-[10px] text-slate-400 uppercase font-black tracking-wider block">
-                      TOTAL REIMBURSEMENT CREDIT
-                    </span>
-                    <div className="text-xl sm:text-2xl font-black text-rose-400">
-                      -{formatLKR(totalNonWinningReimbursement)}
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleExecuteNonWinning}
-                    disabled={totalNonWinningReimbursement <= 0}
-                    className={`px-6 py-3 rounded-full text-xs font-extrabold transition-all flex items-center justify-center gap-2 shadow-md ${
-                      totalNonWinningReimbursement > 0
-                        ? 'bg-gradient-to-r from-rose-500 to-red-500 hover:from-rose-600 hover:to-red-600 text-white shadow-rose-500/25'
-                        : 'bg-slate-800 text-slate-500 cursor-not-allowed shadow-none'
-                    }`}
-                  >
-                    <Check className="w-4 h-4" />
-                    <span>Confirm Stub Drawback (–Debt Offset)</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* SUB-PAGE 3.5: PAY BY CASH */}
-            {activeAction === '3.5' && (
-              <div className="space-y-6 animate-in fade-in duration-200">
-                <div className="flex items-center justify-between pb-4 border-b border-gray-200">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center font-bold shadow-sm">
-                      <Banknote className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="text-lg font-black text-gray-900">
-                        Action 3.5 • Pay by Cash Direct Collection
-                      </h4>
-                      <p className="text-xs text-gray-500 font-medium">
-                        Physical route cash collection. Directly clears retailer debt and records into {currentAssistant.shortName}'s handover balance.
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      setCashAmount('');
-                      setCashReference('');
-                    }}
-                    className="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-                    title="Reset Form"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {/* Quick Presets */}
-                <div className="space-y-2">
-                  <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">
-                    Quick Settlement Presets
+                  <span className="text-[10px] font-bold text-[#D64933] group-hover:underline">
+                    {sessionBreakdown.grossPacks > 0 ? '3.1 Sale ›' : '+ Add ›'}
                   </span>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setCashAmount(currentSeller.currentCredit.toString())}
-                      className="px-4 py-2 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold border border-emerald-200 transition-colors"
-                    >
-                      Clear Full Debt ({formatLKR(currentSeller.currentCredit)})
-                    </button>
-                    {['10000', '25000', '50000', '100000'].map(val => (
-                      <button
-                        key={val}
-                        type="button"
-                        onClick={() => setCashAmount(val)}
-                        className="px-4 py-2 rounded-full bg-white hover:bg-gray-50 text-gray-700 text-xs font-bold border border-gray-200 transition-colors shadow-xs"
-                      >
-                        +{formatLKR(parseFloat(val))}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Cash Tender Input & Reference */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
-                      Cash Amount Tendered (LKR)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="0.00"
-                      value={cashAmount}
-                      onChange={(e) => setCashAmount(e.target.value)}
-                      className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3 text-lg font-black text-emerald-600 focus:outline-none focus:border-orange-500 shadow-sm"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
-                      Cash Receipt / Note
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Field receipt #RC-491 or Cashier Handover"
-                      value={cashReference}
-                      onChange={(e) => setCashReference(e.target.value)}
-                      className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3 text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:border-orange-500 shadow-sm"
-                    />
-                  </div>
-                </div>
-
-                {/* Balance Impact Strip */}
-                <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-                  <div>
-                    <span className="text-gray-500 block text-[10px] uppercase font-bold">Current Debt</span>
-                    <span className="font-extrabold text-rose-600">{formatLKR(currentCredit)}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 block text-[10px] uppercase font-bold">New Debt After Payment</span>
-                    <span className="font-extrabold text-emerald-600">
-                      {formatLKR(Math.max(0, currentCredit - parsedCashAmount))}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 block text-[10px] uppercase font-bold">Rep Handover in Hand</span>
-                    <span className="font-extrabold text-gray-900">
-                      {formatLKR(currentAssistant.cashInHand + parsedCashAmount)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Bottom Confirmation Bar */}
-                <div className="bg-slate-900 text-white rounded-2xl p-4 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-slate-800">
-                  <div>
-                    <span className="text-[10px] text-slate-400 uppercase font-black tracking-wider block">
-                      TOTAL CASH COLLECTED
-                    </span>
-                    <div className="text-xl sm:text-2xl font-black text-emerald-400">
-                      -{formatLKR(parsedCashAmount)}
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleExecuteCash}
-                    disabled={parsedCashAmount <= 0}
-                    className={`px-6 py-3 rounded-full text-xs font-extrabold transition-all flex items-center justify-center gap-2 shadow-md ${
-                      parsedCashAmount > 0
-                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-emerald-600/25'
-                        : 'bg-slate-800 text-slate-500 cursor-not-allowed shadow-none'
-                    }`}
-                  >
-                    <Check className="w-4 h-4" />
-                    <span>Confirm Cash Collection (–Debt Clear)</span>
-                  </button>
                 </div>
               </div>
-            )}
+
+              {/* 2. Unsold Pack Returns */}
+              <div 
+                onClick={() => setActiveModal('RETURN')}
+                className="flex items-center justify-between p-3 rounded-2xl bg-white hover:bg-[#F5EFEB] border border-[#E6DDD4] cursor-pointer transition-all shadow-xs group select-none"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-[#F0F9FF] border border-[#BAE6FD] flex items-center justify-center shrink-0">
+                    <RotateCcw className="w-4 h-4 text-[#0284C7]" />
+                  </div>
+                  <div>
+                    <span className="font-black text-stone-900 block leading-tight">2. Unsold Pack Returns</span>
+                    <span className="text-[10px] text-stone-500">
+                      {sessionBreakdown.returnPacks} packs returned
+                    </span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className={`font-black font-mono block ${sessionBreakdown.returnRefund > 0 ? 'text-[#0284C7]' : 'text-stone-500'}`}>
+                    -LKR {formatLKR(sessionBreakdown.returnRefund).replace('LKR', '').trim()}
+                  </span>
+                  <span className="text-[10px] font-bold text-[#0284C7] group-hover:underline">
+                    {sessionBreakdown.returnPacks > 0 ? 'Edit ›' : '+ Add ›'}
+                  </span>
+                </div>
+              </div>
+
+              {/* 3. Winning Tickets Offset */}
+              <div 
+                onClick={() => setActiveModal('WINNING')}
+                className="flex items-center justify-between p-3 rounded-2xl bg-white hover:bg-[#F5EFEB] border border-[#E6DDD4] cursor-pointer transition-all shadow-xs group select-none"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-[#FEFCE8] border border-[#FEF08A] flex items-center justify-center shrink-0">
+                    <Trophy className="w-4 h-4 text-[#CA8A04]" />
+                  </div>
+                  <div>
+                    <span className="font-black text-stone-900 block leading-tight">3. Winning Tickets Offset</span>
+                    <span className="text-[10px] text-stone-500">
+                      {sessionBreakdown.winningCount > 0 ? `${sessionBreakdown.winningCount} vouchers claimed` : '0 vouchers claimed'}
+                    </span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className={`font-black font-mono block ${sessionBreakdown.winningOffset > 0 ? 'text-[#CA8A04]' : 'text-stone-500'}`}>
+                    -LKR {formatLKR(sessionBreakdown.winningOffset).replace('LKR', '').trim()}
+                  </span>
+                  <span className="text-[10px] font-bold text-[#CA8A04] group-hover:underline">
+                    {sessionBreakdown.winningOffset > 0 ? 'Edit ›' : '+ Add ›'}
+                  </span>
+                </div>
+              </div>
+
+              {/* 4. Non-Winning Drawback */}
+              <div 
+                onClick={() => setActiveModal('NON_WINNING')}
+                className="flex items-center justify-between p-3 rounded-2xl bg-white hover:bg-[#F5EFEB] border border-[#E6DDD4] cursor-pointer transition-all shadow-xs group select-none"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-[#FDF2F8] border border-[#FBCFE8] flex items-center justify-center shrink-0">
+                    <Ticket className="w-4 h-4 text-[#DB2777]" />
+                  </div>
+                  <div>
+                    <span className="font-black text-stone-900 block leading-tight">4. Non-Winning Drawback</span>
+                    <span className="text-[10px] text-stone-500">
+                      {sessionBreakdown.nonWinningStubs > 0 ? `${sessionBreakdown.nonWinningStubs} stubs returned` : '0 stubs returned'}
+                    </span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className={`font-black font-mono block ${sessionBreakdown.nonWinningReimburse > 0 ? 'text-[#DB2777]' : 'text-stone-500'}`}>
+                    -LKR {formatLKR(sessionBreakdown.nonWinningReimburse).replace('LKR', '').trim()}
+                  </span>
+                  <span className="text-[10px] font-bold text-[#DB2777] group-hover:underline">
+                    {sessionBreakdown.nonWinningReimburse > 0 ? 'Edit ›' : '+ Add ›'}
+                  </span>
+                </div>
+              </div>
+
+              {/* 5. Cash Payment */}
+              <div 
+                onClick={() => setActiveModal('CASH')}
+                className="flex items-center justify-between p-3 rounded-2xl bg-white hover:bg-[#F5EFEB] border border-[#E6DDD4] cursor-pointer transition-all shadow-xs group select-none"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-[#F0FDF4] border border-[#BBF7D0] flex items-center justify-center shrink-0">
+                    <Banknote className="w-4 h-4 text-[#16A34A]" />
+                  </div>
+                  <div>
+                    <span className="font-black text-stone-900 block leading-tight">5. Cash Payment</span>
+                    <span className="text-[10px] text-stone-500">
+                      {sessionBreakdown.cashCollected > 0 ? 'Cash settlement logged' : 'No cash tendered'}
+                    </span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className={`font-black font-mono block ${sessionBreakdown.cashCollected > 0 ? 'text-[#16A34A]' : 'text-stone-500'}`}>
+                    -LKR {formatLKR(sessionBreakdown.cashCollected).replace('LKR', '').trim()}
+                  </span>
+                  <span className="text-[10px] font-bold text-[#16A34A] group-hover:underline">
+                    {sessionBreakdown.cashCollected > 0 ? 'Edit ›' : '+ Add ›'}
+                  </span>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Debt Summary Impact */}
+            <div className="pt-2 border-t border-[#E6DDD4] space-y-1.5">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-[#7F7266] font-medium">Previous Balance:</span>
+                <span className="font-extrabold text-stone-900 font-mono">
+                  LKR {formatLKR(sessionBreakdown.prevBalance).replace('LKR', '').trim()}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-black text-stone-900">Post-Order Debt:</span>
+                <span className="font-black text-base text-[#D64933] font-mono">
+                  LKR {formatLKR(currentCredit).replace('LKR', '').trim()}
+                </span>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Big Prominent Final Slip Button (Matching Image) */}
+          <button
+            type="button"
+            onClick={onOpenFinalReceipt}
+            className="w-full py-3.5 px-5 rounded-2xl bg-[#D64933] hover:bg-[#bd3e2a] text-white font-extrabold text-sm sm:text-base flex items-center justify-center gap-2.5 shadow-md shadow-[#D64933]/25 transition-all cursor-pointer min-h-[48px]"
+          >
+            <Printer className="w-4 h-4 text-white" />
+            <span>Preview and Print Final Slip</span>
+          </button>
 
         </div>
 
-        {/* ============================================================= */}
-        {/* COLUMN RIGHT (LG:COL-SPAN-4): FIGMA CHECKOUT & ACTIONS CARD   */}
-        {/* ============================================================= */}
-        <div className="w-full lg:col-span-4 shrink-0 h-full flex flex-col min-h-0 overflow-y-auto space-y-2.5 pr-0.5 custom-scrollbar">
-          
-          {/* Top: Recent Ledger Activity Pill Button (Matching Figma Screenshot) */}
-          <button
-            type="button"
-            onClick={() => setShowLedgerPage(true)}
-            className="w-full py-2 px-4 rounded-xl bg-white hover:bg-[#FAF8F5] border border-[#E6DDD4] text-[#26201D] font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all hover:border-[#D64933] cursor-pointer shrink-0"
-          >
-            <FileText className="w-3.5 h-3.5 text-[#D68A64]" />
-            <span>Recent Ledger Activity</span>
-          </button>
+      </div>
 
-          {/* TOTAL DISPATCH VALUE CARD (FIGMA MATCHING CHECKOUT CARD) */}
-          {activeAction === '3.1' && (
-            <div className="space-y-2 flex-1 flex flex-col justify-between">
-              <div className="figma-card rounded-2xl p-3.5 border border-[#E6DDD4] bg-[#FAF8F5] text-[#26201D] space-y-2 shadow-xs shrink-0">
+      {/* ==================================================================== */}
+      {/* 4. POP-UP MODAL 1: TICKET SALE & DISPATCH                            */}
+      {/* ==================================================================== */}
+      {activeModal === 'SALE' && (
+        <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-4xl w-full shadow-2xl border border-stone-200 overflow-hidden my-6 flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200">
+            
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 bg-gradient-to-r from-stone-900 to-stone-800 text-white flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#FAF0E9]/20 border border-white/20 text-orange-400 flex items-center justify-center font-bold">
+                  <ShoppingBag className="w-5 h-5" />
+                </div>
                 <div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#7F7266]">
-                      Total Dispatch Value
-                    </span>
-                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-white border border-[#E6DDD4] text-[#7F7266]">
-                      {saleMath.totalPacks} packs • {saleMath.totalTickets} tickets
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base sm:text-lg font-black tracking-tight">
+                      Ticket Sale & Dispatch
+                    </h3>
+                    <span className="bg-orange-500/20 text-orange-300 border border-orange-500/40 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
+                      {currentSeller.tier} Pricing
                     </span>
                   </div>
-                  <div className="text-2xl font-black text-[#26201D] tracking-tight mt-0.5 font-mono">
-                    <span className="text-base font-bold mr-1 text-[#7F7266]">LKR</span>
-                    {formatLKR(saleMath.totalBill).replace('LKR', '').trim()}
-                  </div>
+                  <p className="text-xs text-stone-300">
+                    Allocating lottery packs to <strong className="text-white">{currentSeller.name}</strong>
+                  </p>
                 </div>
+              </div>
 
-                {/* Debt & Ceiling Breakdown */}
-                <div className="space-y-1.5 pt-2 border-t border-[#E6DDD4] text-xs">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-[#7F7266] font-medium">Current Outstanding Debt</span>
-                    <span className="font-extrabold text-[#D64933] font-mono">LKR {formatLKR(currentCredit).replace('LKR', '').trim()}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-[#7F7266] font-medium">Assigned Maximum Ceiling</span>
-                    <span className="font-bold text-[#26201D] font-mono">LKR {formatLKR(creditLimit).replace('LKR', '').trim()}</span>
-                  </div>
-                  <div className="pt-1.5 border-t border-[#E6DDD4] flex justify-between items-center">
-                    <span className="font-bold text-[#26201D]">Projected Post-Dispatch</span>
-                    <span className="font-black text-xs sm:text-sm text-[#D64933] font-mono">
-                      LKR {formatLKR(currentCredit + saleMath.totalBill).replace('LKR', '').trim()}
-                    </span>
-                  </div>
-                </div>
+              <button
+                type="button"
+                onClick={() => setActiveModal(null)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
-                {/* Credit Status Card (Green Pass or Red Exceeded) */}
-                {!saleMath.isProjectedExceeded ? (
-                  <div className="p-2 rounded-xl bg-[#F0FDF4] border border-[#BBF7D0] text-[#16A34A] text-xs space-y-0.5">
-                    <div className="flex items-center gap-1.5 font-black">
-                      <Check className="w-3.5 h-3.5 text-[#16A34A]" />
-                      <span>Credit Check Passed</span>
-                    </div>
-                    <p className="text-[10px] font-semibold text-[#16A34A] pl-5">
-                      Remaining room: LKR {formatLKR(Math.max(0, creditLimit - (currentCredit + saleMath.totalBill))).replace('LKR', '').trim()}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="p-2 rounded-xl bg-[#FDF2F0] border border-[#F9C9C2] text-[#D64933] text-xs space-y-0.5">
-                    <div className="flex items-center gap-1.5 font-black">
-                      <AlertTriangle className="w-3.5 h-3.5 text-[#D64933]" />
-                      <span>Credit Limit Exceeded</span>
-                    </div>
-                    <p className="text-[10px] font-semibold text-[#D64933] pl-5">
-                      Excess: LKR {formatLKR(saleMath.excess).replace('LKR', '').trim()}
-                    </p>
-                  </div>
-                )}
-
-                {/* Primary CTA: Confirm & Issue Packs */}
+            {/* Modal Body */}
+            <div className="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1">
+              
+              {/* Category Switcher Tabs */}
+              <div className="grid grid-cols-2 gap-2.5">
                 <button
                   type="button"
+                  onClick={() => setSaleCategory('daily')}
+                  className={`py-2.5 px-3.5 rounded-2xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    saleCategory === 'daily'
+                      ? 'border-2 border-[#D64933] bg-orange-50/50 text-[#D64933] shadow-xs'
+                      : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-50'
+                  }`}
+                >
+                  <Calendar className={`w-4 h-4 ${saleCategory === 'daily' ? 'text-[#D64933]' : 'text-stone-400'}`} />
+                  <span>Daily Draw Lotteries (100-pack)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSaleCategory('scratch')}
+                  className={`py-2.5 px-3.5 rounded-2xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    saleCategory === 'scratch'
+                      ? 'border-2 border-[#D64933] bg-orange-50/50 text-[#D64933] shadow-xs'
+                      : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-50'
+                  }`}
+                >
+                  <Sparkles className={`w-4 h-4 ${saleCategory === 'scratch' ? 'text-[#D64933]' : 'text-stone-400'}`} />
+                  <span>Instant Scratch Cards</span>
+                </button>
+              </div>
+
+              {/* Forward 7-Day Draw Selector */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-bold text-stone-600">
+                  <span className="uppercase tracking-wider">Draw Date Allocation:</span>
+                  <span className="text-[#D64933] font-black">{selectedSaleDay.label} ({selectedSaleDay.dateStr})</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-1.5">
+                  {forwardDays.map(day => {
+                    const isSelected = selectedSaleDay.offset === day.offset;
+                    return (
+                      <button
+                        key={day.offset}
+                        type="button"
+                        onClick={() => setSelectedSaleDay(day)}
+                        className={`p-2 rounded-xl text-center border transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#D64933] text-white border-[#D64933] shadow-xs'
+                            : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200'
+                        }`}
+                      >
+                        <span className="text-[10px] block opacity-80 uppercase">{day.weekday}</span>
+                        <span className="text-xs font-black block">{day.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Ticket Brands List with Stepper */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs font-bold text-stone-600">
+                  <span className="uppercase tracking-wider">Select Brands & Pack Quantities:</span>
+                  <span>{categoryBrands.length} brands available</span>
+                </div>
+
+                <div className="divide-y divide-stone-100 border border-stone-200 rounded-2xl overflow-hidden bg-white">
+                  {categoryBrands.map(b => {
+                    const rate = currentSeller.tier === 'Tier A' ? b.tierAPrice : b.tierBPrice;
+                    const packs = saleTicketCounts[b.id] || 0;
+                    const tickets = packs * b.stockPerPack;
+                    const lineTotal = tickets * rate;
+
+                    return (
+                      <div 
+                        key={b.id} 
+                        className={`p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors ${
+                          packs > 0 ? 'bg-orange-50/40' : 'hover:bg-stone-50/70'
+                        }`}
+                      >
+                        {/* Brand Name & Pricing Info */}
+                        <div className="flex items-center gap-3">
+                          <div className={`w-3.5 h-10 rounded-full bg-gradient-to-b ${b.color || 'from-orange-500 to-amber-600'} shrink-0`} />
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs sm:text-sm font-black text-stone-900">{b.name}</span>
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-stone-100 text-stone-600">
+                                {b.stockPerPack} tix/pack
+                              </span>
+                            </div>
+                            <div className="text-[11px] text-stone-500 mt-0.5">
+                              Face Value: LKR {b.faceValue} • Rate: <strong className="text-stone-800">{formatLKR(rate)}/tix</strong> ({formatLKR(rate * b.stockPerPack)}/pack)
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Quantity Stepper & Subtotal */}
+                        <div className="flex items-center justify-between sm:justify-end gap-3 self-end sm:self-auto">
+                          {/* Stepper */}
+                          <div className="flex items-center bg-stone-100 border border-stone-200 rounded-xl overflow-hidden">
+                            <button
+                              type="button"
+                              onClick={() => handleUpdatePackQty(b.id, -1)}
+                              className="w-8 h-8 flex items-center justify-center hover:bg-stone-200 text-stone-700 transition-colors cursor-pointer"
+                              title="Decrease 1 Pack"
+                            >
+                              <Minus className="w-3.5 h-3.5" />
+                            </button>
+
+                            <input
+                              type="number"
+                              min="0"
+                              value={packs || ''}
+                              onChange={(e) => handleSetPackQty(b.id, parseInt(e.target.value) || 0)}
+                              placeholder="0"
+                              className="w-12 text-center text-xs font-mono font-black bg-white py-1 focus:outline-none"
+                            />
+
+                            <button
+                              type="button"
+                              onClick={() => handleUpdatePackQty(b.id, 1)}
+                              className="w-8 h-8 flex items-center justify-center bg-[#D64933] hover:bg-[#bd3e2a] text-white transition-colors cursor-pointer"
+                              title="Increase 1 Pack"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+
+                          {/* Quick Pack Buttons */}
+                          <div className="hidden sm:flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleUpdatePackQty(b.id, 5)}
+                              className="px-2 py-1 rounded-lg text-[10px] font-bold bg-stone-100 hover:bg-stone-200 text-stone-700 transition-colors cursor-pointer"
+                            >
+                              +5
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdatePackQty(b.id, 10)}
+                              className="px-2 py-1 rounded-lg text-[10px] font-bold bg-stone-100 hover:bg-stone-200 text-stone-700 transition-colors cursor-pointer"
+                            >
+                              +10
+                            </button>
+                          </div>
+
+                          {/* Line Subtotal */}
+                          <div className="text-right min-w-[90px]">
+                            <span className="text-[10px] text-stone-400 block uppercase">Subtotal</span>
+                            <span className={`text-xs sm:text-sm font-mono font-black ${packs > 0 ? 'text-[#D64933]' : 'text-stone-400'}`}>
+                              {formatLKR(lineTotal)}
+                            </span>
+                          </div>
+                        </div>
+
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Optional Dispatch Note */}
+              <div>
+                <input
+                  type="text"
+                  value={saleDispatchNote}
+                  onChange={(e) => setSaleDispatchNote(e.target.value)}
+                  placeholder="Optional dispatch note / route reference (e.g. Regular morning run)..."
+                  className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-stone-200 bg-stone-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#D64933]"
+                />
+              </div>
+
+            </div>
+
+            {/* Order Breakdown Footer & Confirmation Button */}
+            <div className="p-4 sm:p-5 border-t border-stone-200 bg-[#FAF8F5] shrink-0 space-y-3">
+              
+              {/* Totals & Debt Impact */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-3 text-xs">
+                    <span className="text-stone-500 font-medium">Allocated:</span>
+                    <strong className="text-stone-900">{saleMath.totalPacks} Packs ({saleMath.totalTickets} Tickets)</strong>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-stone-500 font-medium">Debt Impact:</span>
+                    <span className="font-mono">{formatLKR(currentCredit)}</span>
+                    <span>→</span>
+                    <span className={`font-mono font-bold ${saleMath.isProjectedExceeded ? 'text-rose-600' : 'text-stone-900'}`}>
+                      {formatLKR(saleMath.projectedCredit)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <span className="text-xs font-bold text-stone-500 block uppercase tracking-wider">Total Bill Amount</span>
+                  <div className="text-xl sm:text-2xl font-black font-mono text-[#D64933]">
+                    {formatLKR(saleMath.totalBill)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Credit Limit Exceeded Warning */}
+              {saleMath.isProjectedExceeded && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2 font-bold">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>
+                    Exceeds credit limit by {formatLKR(saleMath.excess)}! Pack allocation cannot be confirmed until debt is settled.
+                  </span>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setActiveModal(null)}
+                  className="px-5 py-2.5 rounded-full border border-stone-300 hover:bg-stone-100 text-stone-700 text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  disabled={saleMath.totalPacks <= 0 || saleMath.isProjectedExceeded}
                   onClick={handleExecuteSale}
-                  disabled={saleMath.totalBill <= 0 || saleMath.isProjectedExceeded}
-                  className={`w-full py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-md ${
-                    saleMath.totalBill > 0 && !saleMath.isProjectedExceeded
-                      ? 'bg-[#D64933] hover:bg-[#BE3823] text-white shadow-[#D64933]/25 cursor-pointer'
-                      : 'bg-[#E6DDD4] text-[#9F9184] cursor-not-allowed shadow-none'
+                  className={`px-6 py-2.5 rounded-full text-xs font-black shadow-md flex items-center gap-2 transition-all cursor-pointer ${
+                    saleMath.totalPacks > 0 && !saleMath.isProjectedExceeded
+                      ? 'bg-[#D64933] hover:bg-[#bd3e2a] text-white shadow-orange-500/20'
+                      : 'bg-stone-300 text-stone-500 cursor-not-allowed shadow-none'
                   }`}
                 >
                   <Check className="w-4 h-4" />
                   <span>Confirm & Issue Packs</span>
                 </button>
-
-                {/* Secondary CTA: Print 80mm Dispatch Slip */}
-                <button
-                  type="button"
-                  onClick={onOpenFinalReceipt}
-                  className="w-full py-2 rounded-xl text-xs sm:text-sm font-bold bg-white hover:bg-[#FAF8F5] border border-[#E6DDD4] text-[#26201D] transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
-                >
-                  <Printer className="w-3.5 h-3.5 text-[#7F7266]" />
-                  <span>Print 80mm Dispatch Slip</span>
-                </button>
-
-                {/* Cancel Dispatch Link */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSaleTicketCounts({});
-                    setSaleDispatchNote('');
-                  }}
-                  className="w-full text-center text-xs font-bold text-[#7F7266] hover:text-[#26201D] transition-colors cursor-pointer py-1"
-                >
-                  Cancel Dispatch
-                </button>
               </div>
 
-              {/* OVERALL ORDER AMOUNT & FULL BILL CARD (ALL ORDERING ELEMENTS PLACED AS REQUESTED) */}
-              <div className="figma-card rounded-2xl p-4 border border-[#E6DDD4] bg-white text-[#26201D] space-y-3.5 shadow-xs my-1">
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-[#FAF0E9] border border-[#F4DEC9] text-[#D64933] flex items-center justify-center shrink-0">
-                      <Receipt className="w-4 h-4 text-[#D64933]" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-black uppercase tracking-wider text-[#26201D] block">
-                        Full Order & Bill Breakdown
-                      </span>
-                      <span className="text-[11px] text-[#7F7266] font-medium">
-                        Live Session Reconciliation
-                      </span>
-                    </div>
-                  </div>
-                  <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-[#FAF0E9] text-[#D64933] border border-[#F4DEC9]">
-                    {saleMath.totalPacks} Packs
-                  </span>
-                </div>
-
-                {/* Big Prominent Full Bill Amount Highlight */}
-                <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#E6DDD4] space-y-1">
-                  <div className="flex justify-between items-baseline">
-                    <span className="text-xs font-black uppercase tracking-wider text-[#7F7266]">
-                      Full Bill Amount (Net):
-                    </span>
-                    <div className="text-2xl sm:text-3xl font-black text-[#26201D] font-mono tracking-tight">
-                      <span className="text-sm font-bold text-[#7F7266] mr-1">LKR</span>
-                      {formatLKR(Math.max(0, saleMath.totalBill - (returnTotals.totalRefund + totalWinningAmount + totalNonWinningReimbursement + parsedCashAmount))).replace('LKR', '').trim()}
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center text-[11px] text-[#7F7266] font-medium pt-0.5 border-t border-[#E6DDD4]/60">
-                    <span>Gross: LKR {formatLKR(saleMath.totalBill).replace('LKR', '').trim()}</span>
-                    <span>Offsets: -LKR {formatLKR(returnTotals.totalRefund + totalWinningAmount + totalNonWinningReimbursement + parsedCashAmount).replace('LKR', '').trim()}</span>
-                  </div>
-                </div>
-
-                {/* ALL ORDERING ELEMENTS PERMANENTLY PLACED */}
-                <div className="space-y-2 text-xs">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-[#7F7266] block">
-                    All Ordering Elements
-                  </span>
-
-                  {/* 1. Ticket Dispatch */}
-                  <div 
-                    onClick={() => setActiveAction('3.1')}
-                    className="flex items-center justify-between p-2 rounded-xl bg-[#FAF8F5] hover:bg-[#F5EFEB] border border-[#E6DDD4] cursor-pointer transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <ShoppingBag className="w-3.5 h-3.5 text-[#D64933] shrink-0" />
-                      <div>
-                        <span className="font-bold text-[#26201D] block leading-tight">1. Gross Dispatch</span>
-                        <span className="text-[10px] text-[#7F7266]">{saleMath.totalPacks} packs ({saleMath.totalTickets} tix)</span>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <span className="font-black text-[#26201D] font-mono block">
-                        +LKR {formatLKR(saleMath.totalBill).replace('LKR', '').trim()}
-                      </span>
-                      <span className="text-[9px] font-bold text-[#D64933]">3.1 Sale ›</span>
-                    </div>
-                  </div>
-
-                  {/* 2. Returning */}
-                  <div 
-                    onClick={() => setActiveAction('3.2')}
-                    className="flex items-center justify-between p-2 rounded-xl bg-[#FAF8F5] hover:bg-[#F5EFEB] border border-[#E6DDD4] cursor-pointer transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <RotateCcw className="w-3.5 h-3.5 text-cyan-600 shrink-0" />
-                      <div>
-                        <span className="font-bold text-[#26201D] block leading-tight">2. Unsold Pack Returns</span>
-                        <span className="text-[10px] text-[#7F7266]">{returnTotals.totalPacks} packs returned</span>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <span className={`font-black font-mono block ${returnTotals.totalRefund > 0 ? 'text-cyan-700' : 'text-[#7F7266]'}`}>
-                        -LKR {formatLKR(returnTotals.totalRefund).replace('LKR', '').trim()}
-                      </span>
-                      <span className="text-[9px] font-bold text-cyan-700">{returnTotals.totalPacks > 0 ? 'Edit ›' : '+ Add ›'}</span>
-                    </div>
-                  </div>
-
-                  {/* 3. Winning */}
-                  <div 
-                    onClick={() => setActiveAction('3.3')}
-                    className="flex items-center justify-between p-2 rounded-xl bg-[#FAF8F5] hover:bg-[#F5EFEB] border border-[#E6DDD4] cursor-pointer transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Trophy className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                      <div>
-                        <span className="font-bold text-[#26201D] block leading-tight">3. Winning Tickets Offset</span>
-                        <span className="text-[10px] text-[#7F7266]">{totalWinningAmount > 0 ? 'Prize claims added' : '0 vouchers claimed'}</span>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <span className={`font-black font-mono block ${totalWinningAmount > 0 ? 'text-amber-700' : 'text-[#7F7266]'}`}>
-                        -LKR {formatLKR(totalWinningAmount).replace('LKR', '').trim()}
-                      </span>
-                      <span className="text-[9px] font-bold text-amber-700">{totalWinningAmount > 0 ? 'Edit ›' : '+ Add ›'}</span>
-                    </div>
-                  </div>
-
-                  {/* 4. Non-Winning Stubs */}
-                  <div 
-                    onClick={() => setActiveAction('3.4')}
-                    className="flex items-center justify-between p-2 rounded-xl bg-[#FAF8F5] hover:bg-[#F5EFEB] border border-[#E6DDD4] cursor-pointer transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Ticket className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                      <div>
-                        <span className="font-bold text-[#26201D] block leading-tight">4. Non-Winning Drawback</span>
-                        <span className="text-[10px] text-[#7F7266]">{nonWinningStubCount || 0} stubs returned</span>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <span className={`font-black font-mono block ${totalNonWinningReimbursement > 0 ? 'text-rose-700' : 'text-[#7F7266]'}`}>
-                        -LKR {formatLKR(totalNonWinningReimbursement).replace('LKR', '').trim()}
-                      </span>
-                      <span className="text-[9px] font-bold text-rose-700">{totalNonWinningReimbursement > 0 ? 'Edit ›' : '+ Add ›'}</span>
-                    </div>
-                  </div>
-
-                  {/* 5. Cash */}
-                  <div 
-                    onClick={() => setActiveAction('3.5')}
-                    className="flex items-center justify-between p-2 rounded-xl bg-[#FAF8F5] hover:bg-[#F5EFEB] border border-[#E6DDD4] cursor-pointer transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Banknote className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                      <div>
-                        <span className="font-bold text-[#26201D] block leading-tight">5. Cash Payment</span>
-                        <span className="text-[10px] text-[#7F7266]">{parsedCashAmount > 0 ? 'Cash settlement' : 'No cash tendered'}</span>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <span className={`font-black font-mono block ${parsedCashAmount > 0 ? 'text-emerald-700' : 'text-[#7F7266]'}`}>
-                        -LKR {formatLKR(parsedCashAmount).replace('LKR', '').trim()}
-                      </span>
-                      <span className="text-[9px] font-bold text-emerald-700">{parsedCashAmount > 0 ? 'Edit ›' : '+ Add ›'}</span>
-                    </div>
-                  </div>
-
-                  {/* Summary Debt Impact */}
-                  <div className="pt-2 border-t border-[#E6DDD4] space-y-1">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-[#7F7266] font-medium">Previous Balance:</span>
-                      <span className="font-extrabold text-[#26201D] font-mono">
-                        LKR {formatLKR(currentCredit).replace('LKR', '').trim()}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="font-black text-[#26201D]">Post-Order Debt:</span>
-                      <span className="font-black text-sm text-[#D64933] font-mono">
-                        LKR {formatLKR(Math.max(0, currentCredit + saleMath.totalBill - (returnTotals.totalRefund + totalWinningAmount + totalNonWinningReimbursement + parsedCashAmount))).replace('LKR', '').trim()}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Big Red Button: Preview and Print Final Slip (Matching Figma Screenshot) */}
-              <button
-                type="button"
-                onClick={onOpenFinalReceipt}
-                className="w-full py-3.5 px-5 rounded-2xl bg-[#D64933] hover:bg-[#BE3823] text-white font-extrabold text-sm sm:text-base flex items-center justify-center gap-2.5 shadow-md shadow-[#D64933]/25 transition-all cursor-pointer shrink-0 min-h-[48px]"
-              >
-                <Printer className="w-4 h-4 text-white" />
-                <span>Preview and Print Final Slip</span>
-              </button>
             </div>
-          )}
 
-          {/* DYNAMIC CARD FOR RETURN 3.2 */}
-          {activeAction === '3.2' && (
-            <div className="glass-panel-elevated rounded-3xl p-5 border border-gray-200 text-gray-900 space-y-3.5 shadow-sm">
-              <div>
-                <span className="text-[10px] font-black uppercase tracking-wider text-gray-500 block">
-                  Total Return Credit
-                </span>
-                <div className="text-xl sm:text-2xl font-black text-cyan-600 mt-0.5">
-                  -{formatLKR(returnTotals.totalRefund)}
-                </div>
-                <p className="text-[11px] text-gray-500 font-medium">
-                  ({returnTotals.totalPacks} packs returned)
-                </p>
-              </div>
-
-              <div className="pt-2 border-t border-gray-100 text-xs">
-                <div className="flex justify-between text-gray-500 text-[11px]">
-                  <span>New Debt:</span>
-                  <span className="font-bold text-gray-900">{formatLKR(Math.max(0, currentCredit - returnTotals.totalRefund))}</span>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleExecuteReturn}
-                disabled={returnTotals.totalRefund <= 0}
-                className={`w-full py-3.5 rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-2 shadow-md ${
-                  returnTotals.totalRefund > 0
-                    ? 'bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-700 hover:to-teal-700 text-white shadow-cyan-600/20'
-                    : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed shadow-none'
-                }`}
-              >
-                <Check className="w-4 h-4" />
-                <span>Confirm Return</span>
-              </button>
-            </div>
-          )}
-
-          {/* DYNAMIC CARD FOR WINNING 3.3 */}
-          {activeAction === '3.3' && (
-            <div className="glass-panel-elevated rounded-3xl p-5 border border-gray-200 text-gray-900 space-y-3.5 shadow-sm">
-              <div>
-                <span className="text-[10px] font-black uppercase tracking-wider text-gray-500 block">
-                  Total Prize Offset
-                </span>
-                <div className="text-xl sm:text-2xl font-black text-amber-600 mt-0.5">
-                  -{formatLKR(totalWinningAmount)}
-                </div>
-                <p className="text-[11px] text-gray-500 font-medium">
-                  Winning Voucher Claims
-                </p>
-              </div>
-
-              <div className="pt-2 border-t border-gray-100 text-xs">
-                <div className="flex justify-between text-gray-500 text-[11px]">
-                  <span>New Debt:</span>
-                  <span className="font-bold text-gray-900">{formatLKR(Math.max(0, currentCredit - totalWinningAmount))}</span>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleExecuteWinning}
-                disabled={totalWinningAmount <= 0}
-                className={`w-full py-3.5 rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-2 shadow-md ${
-                  totalWinningAmount > 0
-                    ? 'neon-gradient-btn text-white'
-                    : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed shadow-none'
-                }`}
-              >
-                <Check className="w-4 h-4" />
-                <span>Confirm Winning</span>
-              </button>
-            </div>
-          )}
-
-          {/* DYNAMIC CARD FOR NON-WINNING 3.4 */}
-          {activeAction === '3.4' && (
-            <div className="glass-panel-elevated rounded-3xl p-5 border border-gray-200 text-gray-900 space-y-3.5 shadow-sm">
-              <div>
-                <span className="text-[10px] font-black uppercase tracking-wider text-gray-500 block">
-                  Total Drawback Credit
-                </span>
-                <div className="text-xl sm:text-2xl font-black text-rose-600 mt-0.5">
-                  -{formatLKR(totalNonWinningReimbursement)}
-                </div>
-                <p className="text-[11px] text-gray-500 font-medium">
-                  ({nonWinningStubCount || 0} stubs returned)
-                </p>
-              </div>
-
-              <div className="pt-2 border-t border-gray-100 text-xs">
-                <div className="flex justify-between text-gray-500 text-[11px]">
-                  <span>New Debt:</span>
-                  <span className="font-bold text-gray-900">{formatLKR(Math.max(0, currentCredit - totalNonWinningReimbursement))}</span>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleExecuteNonWinning}
-                disabled={totalNonWinningReimbursement <= 0}
-                className={`w-full py-3.5 rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-2 shadow-md ${
-                  totalNonWinningReimbursement > 0
-                    ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-rose-500/20'
-                    : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed shadow-none'
-                }`}
-              >
-                <Check className="w-4 h-4" />
-                <span>Confirm Drawback</span>
-              </button>
-            </div>
-          )}
-
-          {/* DYNAMIC CARD FOR CASH 3.5 */}
-          {activeAction === '3.5' && (
-            <div className="glass-panel-elevated rounded-3xl p-5 border border-gray-200 text-gray-900 space-y-3.5 shadow-sm">
-              <div>
-                <span className="text-[10px] font-black uppercase tracking-wider text-gray-500 block">
-                  Total Cash Settlement
-                </span>
-                <div className="text-xl sm:text-2xl font-black text-emerald-600 mt-0.5">
-                  -{formatLKR(parsedCashAmount)}
-                </div>
-                <p className="text-[11px] text-gray-500 font-medium">
-                  Direct Cash Handover
-                </p>
-              </div>
-
-              <div className="pt-2 border-t border-gray-100 text-xs">
-                <div className="flex justify-between text-gray-500 text-[11px]">
-                  <span>New Debt:</span>
-                  <span className="font-bold text-gray-900">{formatLKR(Math.max(0, currentCredit - parsedCashAmount))}</span>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleExecuteCash}
-                disabled={parsedCashAmount <= 0}
-                className={`w-full py-3.5 rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-2 shadow-md ${
-                  parsedCashAmount > 0
-                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
-                    : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed shadow-none'
-                }`}
-              >
-                <Check className="w-4 h-4" />
-                <span>Confirm Cash</span>
-              </button>
-            </div>
-          )}
-
+          </div>
         </div>
+      )}
 
-      </div>
+      {/* ==================================================================== */}
+      {/* 5. POP-UP MODAL 2: PACK RETURN                                       */}
+      {/* ==================================================================== */}
+      {activeModal === 'RETURN' && (
+        <ReturnModal
+          currentSeller={currentSeller}
+          brands={brands}
+          onClose={() => setActiveModal(null)}
+          onConfirm={(data) => {
+            onConfirmReturn(data);
+            setActiveModal(null);
+          }}
+        />
+      )}
+
+      {/* ==================================================================== */}
+      {/* 6. POP-UP MODAL 3: WINNING TICKETS OFFSET                            */}
+      {/* ==================================================================== */}
+      {activeModal === 'WINNING' && (
+        <WinningModal
+          currentSeller={currentSeller}
+          onClose={() => setActiveModal(null)}
+          onConfirm={(data) => {
+            onConfirmWinning(data);
+            setActiveModal(null);
+          }}
+        />
+      )}
+
+      {/* ==================================================================== */}
+      {/* 7. POP-UP MODAL 4: NON-WINNING STUBS DRAWBACK                        */}
+      {/* ==================================================================== */}
+      {activeModal === 'NON_WINNING' && (
+        <NonWinningModal
+          currentSeller={currentSeller}
+          brands={brands}
+          onClose={() => setActiveModal(null)}
+          onConfirm={(data) => {
+            onConfirmNonWinning(data);
+            setActiveModal(null);
+          }}
+        />
+      )}
+
+      {/* ==================================================================== */}
+      {/* 8. POP-UP MODAL 5: PAY BY CASH DIRECT COLLECTION                     */}
+      {/* ==================================================================== */}
+      {activeModal === 'CASH' && (
+        <CashModal
+          currentSeller={currentSeller}
+          currentAssistant={currentAssistant}
+          onClose={() => setActiveModal(null)}
+          onConfirm={(data) => {
+            onConfirmCash(data);
+            setActiveModal(null);
+          }}
+        />
+      )}
 
     </div>
   );

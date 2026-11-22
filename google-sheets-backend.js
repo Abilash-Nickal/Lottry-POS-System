@@ -29,7 +29,8 @@ const SHEET_NAMES = {
   SELLERS: 'sellers',
   ASSISTANTS: 'assistants',
   BRANDS: 'brands',
-  TRANSACTIONS: 'transactions'
+  TRANSACTIONS: 'transactions',
+  ADMIN_PROFILE: 'admin_profile'
 };
 
 /**
@@ -50,6 +51,7 @@ function doGet(e) {
       const assistants = getSheetData(ss.getSheetByName(SHEET_NAMES.ASSISTANTS));
       const brands = getSheetData(ss.getSheetByName(SHEET_NAMES.BRANDS));
       const transactions = getSheetData(ss.getSheetByName(SHEET_NAMES.TRANSACTIONS));
+      const adminRows = getSheetData(ss.getSheetByName(SHEET_NAMES.ADMIN_PROFILE));
 
       // Parse JSON details if any
       transactions.forEach(t => {
@@ -63,7 +65,8 @@ function doGet(e) {
         sellers: sellers.map(formatSeller),
         assistants: assistants.map(formatAssistant),
         brands: brands.map(formatBrand),
-        transactions: transactions.map(formatTransaction)
+        transactions: transactions.map(formatTransaction),
+        adminProfile: adminRows.length > 0 ? formatAdminProfile(adminRows[0]) : null
       };
 
       lock.releaseLock();
@@ -117,6 +120,10 @@ function doPost(e) {
 
       case 'upsertBrand':
         result = handleUpsertBrand(ss, data);
+        break;
+
+      case 'upsertAdminProfile':
+        result = handleUpsertAdminProfile(ss, data);
         break;
 
       default:
@@ -199,7 +206,8 @@ function handleUpsertSeller(ss, seller) {
     Number(seller.creditLimit) || 0,
     Number(seller.currentCredit) || 0,
     seller.assignedAssistant || '',
-    Boolean(seller.isFrozen)
+    Boolean(seller.isFrozen),
+    seller.avatarId || 'char-06'
   ];
 
   if (foundRow > 0) {
@@ -246,7 +254,37 @@ function handleUpsertAssistant(ss, assistant) {
     Number(assistant.cashInHand) || 0,
     Number(assistant.winningVouchers) || 0,
     Number(assistant.totalOrdersToday) || 0,
-    assistant.avatarBg || 'bg-orange-500 text-white'
+    assistant.avatarBg || 'bg-orange-500 text-white',
+    assistant.avatarId || 'char-02'
+  ];
+
+  if (foundRow > 0) {
+    sheet.getRange(foundRow, 1, 1, rowValues.length).setValues([rowValues]);
+  } else {
+    sheet.appendRow(rowValues);
+  }
+
+  return { success: true };
+}
+
+function handleUpsertAdminProfile(ss, profile) {
+  const sheet = ss.getSheetByName(SHEET_NAMES.ADMIN_PROFILE);
+  const data = sheet.getDataRange().getValues();
+  let foundRow = -1;
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]) === String(profile.id || 'admin_1')) {
+      foundRow = i + 1;
+      break;
+    }
+  }
+
+  const rowValues = [
+    profile.id || 'admin_1',
+    profile.name || 'W.M.G. චිත්රා වීරකෝන්',
+    profile.title || 'ලොතරැයි බෙදාහැරීම් කාර්යාලය • දෙහිඅත්තකණ්ඩිය',
+    profile.phone || '+94 77 123 4567',
+    profile.avatarId || 'char-01'
   ];
 
   if (foundRow > 0) {
@@ -307,7 +345,8 @@ function formatSeller(row) {
     creditLimit: Number(row.credit_limit || row.creditLimit || 0),
     currentCredit: Number(row.current_credit || row.currentCredit || 0),
     assignedAssistant: String(row.assigned_assistant || row.assignedAssistant || ''),
-    isFrozen: Boolean(row.is_frozen === true || row.is_frozen === 'true' || row.isFrozen === true)
+    isFrozen: Boolean(row.is_frozen === true || row.is_frozen === 'true' || row.isFrozen === true),
+    avatarId: String(row.avatar_id || row.avatarId || 'char-06')
   };
 }
 
@@ -323,7 +362,18 @@ function formatAssistant(row) {
     cashInHand: Number(row.cash_in_hand || row.cashInHand || 0),
     winningVouchers: Number(row.winning_vouchers || row.winningVouchers || 0),
     totalOrdersToday: Number(row.total_orders_today || row.totalOrdersToday || 0),
-    avatarBg: String(row.avatar_bg || row.avatarBg || 'bg-orange-500 text-white')
+    avatarBg: String(row.avatar_bg || row.avatarBg || 'bg-orange-500 text-white'),
+    avatarId: String(row.avatar_id || row.avatarId || 'char-02')
+  };
+}
+
+function formatAdminProfile(row) {
+  return {
+    id: String(row.id || 'admin_1'),
+    name: String(row.name || 'W.M.G. චිත්රා වීරකෝන්'),
+    title: String(row.title || 'ලොතරැයි බෙදාහැරීම් කාර්යාලය • දෙහිඅත්තකණ්ඩිය'),
+    phone: String(row.phone || '+94 77 123 4567'),
+    avatarId: String(row.avatar_id || row.avatarId || 'char-01')
   };
 }
 
@@ -391,11 +441,11 @@ function ensureSheetsInitialized(ss) {
   const sheetDefinitions = [
     {
       name: SHEET_NAMES.SELLERS,
-      headers: ['id', 'name', 'owner', 'phone', 'location', 'tier', 'credit_limit', 'current_credit', 'assigned_assistant', 'is_frozen']
+      headers: ['id', 'name', 'owner', 'phone', 'location', 'tier', 'credit_limit', 'current_credit', 'assigned_assistant', 'is_frozen', 'avatar_id']
     },
     {
       name: SHEET_NAMES.ASSISTANTS,
-      headers: ['id', 'name', 'short_name', 'username', 'default_pass', 'phone', 'route', 'cash_in_hand', 'winning_vouchers', 'total_orders_today', 'avatar_bg']
+      headers: ['id', 'name', 'short_name', 'username', 'default_pass', 'phone', 'route', 'cash_in_hand', 'winning_vouchers', 'total_orders_today', 'avatar_bg', 'avatar_id']
     },
     {
       name: SHEET_NAMES.BRANDS,
@@ -404,6 +454,11 @@ function ensureSheetsInitialized(ss) {
     {
       name: SHEET_NAMES.TRANSACTIONS,
       headers: ['id', 'date', 'seller_id', 'seller_name', 'assistant_id', 'assistant_name', 'action_type', 'type_label', 'amount', 'old_credit', 'new_credit', 'notes', 'details']
+    },
+    {
+      name: SHEET_NAMES.ADMIN_PROFILE,
+      headers: ['id', 'name', 'title', 'phone', 'avatar_id'],
+      defaultRow: ['admin_1', 'W.M.G. චිත්රා වීරකෝන්', 'ලොතරැයි බෙදාහැරීම් කාර්යාලය • දෙහිඅත්තකණ්ඩිය', '+94 77 123 4567', 'char-01']
     }
   ];
 
@@ -414,10 +469,16 @@ function ensureSheetsInitialized(ss) {
       sheet.appendRow(def.headers);
       sheet.getRange(1, 1, 1, def.headers.length).setFontWeight('bold').setBackground('#E2E8F0');
       sheet.setFrozenRows(1);
+      if (def.defaultRow) {
+        sheet.appendRow(def.defaultRow);
+      }
     } else if (sheet.getLastRow() === 0) {
       sheet.appendRow(def.headers);
       sheet.getRange(1, 1, 1, def.headers.length).setFontWeight('bold').setBackground('#E2E8F0');
       sheet.setFrozenRows(1);
+      if (def.defaultRow) {
+        sheet.appendRow(def.defaultRow);
+      }
     }
   });
 }

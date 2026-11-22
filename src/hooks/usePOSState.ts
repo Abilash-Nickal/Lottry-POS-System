@@ -6,19 +6,23 @@ import {
   Transaction, 
   CompletedSlip, 
   StepType, 
-  ActionModalType 
+  ActionModalType,
+  AdminProfile
 } from '../types';
 import { 
   INITIAL_BRANDS, 
   INITIAL_ASSISTANTS, 
   INITIAL_SELLERS, 
-  INITIAL_TRANSACTIONS 
+  INITIAL_TRANSACTIONS,
+  INITIAL_ADMIN_PROFILE
 } from '../data/initialData';
 import { formatLKR } from '../utils/formatters';
 import { 
   fetchAllData, 
   dbRecordTransaction, 
-  dbUpsertSeller 
+  dbUpsertSeller,
+  getAdminProfile,
+  dbUpsertAdminProfile
 } from '../lib/supabaseService';
 
 /**
@@ -43,6 +47,7 @@ export function usePOSState() {
   const [sellers, setSellers] = useState<Seller[]>(INITIAL_SELLERS);
   const [assistants, setAssistants] = useState<Assistant[]>(INITIAL_ASSISTANTS);
   const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS);
+  const [adminProfile, setAdminProfile] = useState<AdminProfile>(getAdminProfile());
 
   // Initialize and synchronize live data with Supabase
   useEffect(() => {
@@ -54,6 +59,7 @@ export function usePOSState() {
         if (data.assistants.length > 0) setAssistants(data.assistants);
         if (data.brands.length > 0) setBrands(data.brands);
         if (data.transactions.length > 0) setTransactions(data.transactions);
+        if (data.adminProfile) setAdminProfile(data.adminProfile);
       })
       .catch((err) => {
         console.warn('Supabase fetch error, using local fallback:', err);
@@ -63,6 +69,12 @@ export function usePOSState() {
       isMounted = false;
     };
   }, []);
+
+  const handleUpdateAdminProfile = (updated: AdminProfile) => {
+    setAdminProfile(updated);
+    dbUpsertAdminProfile(updated);
+    showToast(`Admin profile updated: ${updated.name}`, 'success');
+  };
 
   // Action Modals & Receipt State
   const [activeActionModal, setActiveActionModal] = useState<ActionModalType>(null);
@@ -481,6 +493,11 @@ export function usePOSState() {
     // Notifications
     toast,
     showToast,
+
+    // Admin Profile
+    adminProfile,
+    setAdminProfile,
+    handleUpdateAdminProfile,
 
     // Handlers
     handleSelectRole,

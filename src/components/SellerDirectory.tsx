@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { Assistant, Seller } from '../types';
 import { formatLKR } from '../utils/formatters';
+import { AvatarDisplay } from './AvatarDisplay';
 
 interface SellerDirectoryProps {
   sellers: Seller[];
@@ -184,11 +185,15 @@ export const SellerDirectory: React.FC<SellerDirectoryProps> = ({
                   : 'border border-[#E6DDD4] hover:border-[#D68A64]'
               }`}
             >
-              {/* Left: Store Icon + Retailer Details */}
+              {/* Left: Store Character Avatar + Retailer Details */}
               <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
-                <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-[#FAF0E9] border border-[#F4DEC9] text-[#C25838] flex items-center justify-center shrink-0">
-                  <Building2 className="w-5 h-5 text-[#C25838]" />
-                </div>
+                <AvatarDisplay
+                  avatarId={seller.avatarId || 'char-06'}
+                  name={seller.name}
+                  size="lg"
+                  showBadge={true}
+                  className="shrink-0"
+                />
 
                 <div className="min-w-0">
                   <h3 className="font-bold text-base sm:text-lg text-[#1E1915] truncate">

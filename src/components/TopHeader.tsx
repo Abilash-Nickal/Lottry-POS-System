@@ -5,13 +5,15 @@ import {
   Printer, 
   ChevronDown
 } from 'lucide-react';
-import { Seller, Assistant, StepType } from '../types';
+import { Seller, Assistant, StepType, AdminProfile } from '../types';
+import { AvatarDisplay } from './AvatarDisplay';
 
 interface TopHeaderProps {
   currentStep: StepType | string;
   currentSeller: Seller;
   currentAssistant: Assistant;
   authenticatedRole: 'admin' | 'assistant' | null;
+  adminProfile?: AdminProfile;
   onSwitchRetailer: () => void;
   onOpenFinalReceipt: () => void;
   onSwitchUser: () => void;
@@ -24,6 +26,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   currentSeller,
   currentAssistant,
   authenticatedRole,
+  adminProfile,
   onSwitchRetailer,
   onOpenFinalReceipt,
   onSwitchUser,
@@ -111,15 +114,17 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           className="flex items-center gap-2.5 pl-1.5 pr-3 py-1 rounded-xl bg-[#FAF7F4] hover:bg-[#F2ECE4] border border-[#E6DDD4] cursor-pointer group transition-all shadow-xs"
           title="Click to Switch User"
         >
-          <div className="w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs text-white shadow-xs bg-gradient-to-br from-orange-500 to-amber-600">
-            {authenticatedRole === 'admin' ? 'චි' : currentAssistant?.shortName?.charAt(0) || 'K'}
-          </div>
+          <AvatarDisplay
+            avatarId={authenticatedRole === 'admin' ? (adminProfile?.avatarId || 'char-01') : (currentAssistant?.avatarId || 'char-02')}
+            name={authenticatedRole === 'admin' ? (adminProfile?.name || 'Admin') : currentAssistant?.shortName}
+            size="xs"
+          />
           <div className="text-left hidden lg:block">
             <span className="text-xs font-bold text-[#26201D] block leading-tight group-hover:text-orange-600 transition-colors">
-              {authenticatedRole === 'admin' ? 'W.M.G. චිත්රා වීරකෝන්' : currentAssistant?.shortName}
+              {authenticatedRole === 'admin' ? (adminProfile?.name || 'W.M.G. චිත්රා වීරකෝන්') : currentAssistant?.shortName}
             </span>
             <span className="text-[10px] font-medium text-[#7F7266] block leading-tight">
-              {authenticatedRole === 'admin' ? 'ලොතරැයි බෙදාහැරීම් කාර්යාලය • දෙහිඅත්තකණ්ඩිය' : 'Field POS Officer'}
+              {authenticatedRole === 'admin' ? (adminProfile?.title || 'ලොතරැයි බෙදාහැරීම් කාර්යාලය • දෙහිඅත්තකණ්ඩිය') : 'Field POS Officer'}
             </span>
           </div>
           <ChevronDown className="w-3.5 h-3.5 text-[#9F9184] group-hover:text-[#26201D] transition-colors hidden sm:block" />

@@ -80,6 +80,10 @@ export default function LotteryDistributorPOS() {
     toast,
     showToast,
 
+    // Admin Profile
+    adminProfile,
+    handleUpdateAdminProfile,
+
     // Action Handlers
     handleSelectRole,
     handleSelectAdmin,
@@ -260,6 +264,7 @@ export default function LotteryDistributorPOS() {
         setCurrentStep={setCurrentStep}
         authenticatedRole={authenticatedRole}
         currentAssistant={currentAssistant}
+        adminProfile={adminProfile}
         onSwitchUser={() => setCurrentStep('USER_SELECT')}
         activeActionId={selectedActionId}
         onSelectAction={(id) => {
@@ -280,6 +285,7 @@ export default function LotteryDistributorPOS() {
           currentSeller={currentSeller}
           currentAssistant={currentAssistant}
           authenticatedRole={authenticatedRole}
+          adminProfile={adminProfile}
           onSwitchRetailer={() => setCurrentStep('SELLER_SELECT')}
           onOpenFinalReceipt={() => openAllInOneReceipt()}
           onSwitchUser={() => setCurrentStep('USER_SELECT')}
@@ -295,6 +301,8 @@ export default function LotteryDistributorPOS() {
               assistants={assistants}
               sellers={sellers}
               transactions={transactions}
+              adminProfile={adminProfile}
+              onUpdateAdminProfile={handleUpdateAdminProfile}
               onToggleFreeze={handleToggleFreeze}
               onOpenSellerPOS={(sellerId, assistantId) => {
                 setSelectedSellerId(sellerId);

@@ -32,26 +32,35 @@ import {
   FileSpreadsheet,
   RefreshCw,
   CheckCircle2,
-  Globe
+  Globe,
+  Sparkles
 } from 'lucide-react';
-import { LotteryBrand, Assistant, Seller, Transaction } from '../types';
+import { LotteryBrand, Assistant, Seller, Transaction, AdminProfile } from '../types';
 import { formatLKR } from '../utils/formatters';
 import { 
   dbUpsertSeller, 
   dbDeleteSeller, 
   dbUpsertAssistant, 
   dbUpsertBrand,
+  dbUpsertAdminProfile,
   getGoogleSheetsUrl,
   setGoogleSheetsUrl,
   exportTransactionsToExcel,
-  exportSellersToExcel
+  exportSellersToExcel,
+  exportAssistantsToExcel
 } from '../lib/databaseService';
+import { AvatarDisplay } from './AvatarDisplay';
+import { AvatarPickerModal } from './AvatarPickerModal';
+import { CHARACTER_AVATARS, getAvatarById } from '../constants/avatars';
+import { INITIAL_ADMIN_PROFILE } from '../data/initialData';
 
 interface AdminDashboardProps {
   brands: LotteryBrand[];
   assistants: Assistant[];
   sellers: Seller[];
   transactions: Transaction[];
+  adminProfile?: AdminProfile;
+  onUpdateAdminProfile?: (profile: AdminProfile) => void;
   onToggleFreeze: (sellerId: string) => void;
   onOpenSellerPOS: (sellerId: string, assistantId: string) => void;
   onOpenAssistantPOS: (assistantId: string) => void;
@@ -70,6 +79,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   assistants,
   sellers,
   transactions,
+  adminProfile,
+  onUpdateAdminProfile,
   onToggleFreeze,
   onOpenSellerPOS,
   onOpenAssistantPOS,
@@ -85,11 +96,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [internalTab, setInternalTab] = useState<'overview' | 'pricing' | 'sellers' | 'assistants' | 'ledger'>('overview');
   const adminTab = activeTab || internalTab;
 
+  // Admin Profile State
+  const [adminProfileState, setAdminProfileState] = useState<AdminProfile>(adminProfile || INITIAL_ADMIN_PROFILE);
+  const [showEditAdminModal, setShowEditAdminModal] = useState(false);
+  const [adminForm, setAdminForm] = useState<AdminProfile>(adminProfile || INITIAL_ADMIN_PROFILE);
+
+  // Avatar Picker Target State: 'admin' | 'seller' | 'assistant' | null
+  const [avatarPickerTarget, setAvatarPickerTarget] = useState<'admin' | 'seller' | 'assistant' | null>(null);
+
+  // Synchronize when adminProfile prop changes
+  React.useEffect(() => {
+    if (adminProfile) {
+      setAdminProfileState(adminProfile);
+      setAdminForm(adminProfile);
+    }
+  }, [adminProfile]);
+
   // --------------------------------------------------------------------------
   // MODAL STATES
   // --------------------------------------------------------------------------
   // 1. Sellers Modals
   const [showAddSellerModal, setShowAddSellerModal] = useState(false);
+  const [editingSeller, setEditingSeller] = useState<Seller | null>(null);
   const [editingCreditSeller, setEditingCreditSeller] = useState<Seller | null>(null);
   const [newCreditLimitInput, setNewCreditLimitInput] = useState<number>(300000);
   const [newSellerForm, setNewSellerForm] = useState({
@@ -99,7 +127,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     location: '',
     tier: 'Tier A' as 'Tier A' | 'Tier B',
     creditLimit: 300000,
-    assignedAssistant: assistants[0]?.id || 'ast1'
+    assignedAssistant: assistants[0]?.id || 'ast1',
+    avatarId: 'char-06'
   });
 
   // Sellers Search, Tier Filter & Delete States
@@ -225,7 +254,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     phone: '',
     route: '',
     username: '',
-    defaultPass: '1234'
+    defaultPass: '1234',
+    avatarId: 'char-02'
   });
 
   // 3. Brands Modals
@@ -322,7 +352,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       creditLimit: Number(newSellerForm.creditLimit) || 250000,
       currentCredit: 0,
       assignedAssistant: newSellerForm.assignedAssistant,
-      isFrozen: false
+      isFrozen: false,
+      avatarId: newSellerForm.avatarId || 'char-06'
     };
 
     if (onUpdateSellers) {
@@ -338,8 +369,51 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       location: '',
       tier: 'Tier A',
       creditLimit: 300000,
-      assignedAssistant: assistants[0]?.id || 'ast1'
+      assignedAssistant: assistants[0]?.id || 'ast1',
+      avatarId: 'char-06'
     });
+  };
+
+  const handleOpenEditSeller = (seller: Seller) => {
+    setEditingSeller(seller);
+    setNewSellerForm({
+      name: seller.name,
+      owner: seller.owner,
+      phone: seller.phone,
+      location: seller.location,
+      tier: seller.tier,
+      creditLimit: seller.creditLimit,
+      assignedAssistant: seller.assignedAssistant,
+      avatarId: seller.avatarId || 'char-06'
+    });
+  };
+
+  const handleSaveSellerEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSeller || !onUpdateSellers) return;
+
+    onUpdateSellers(prev =>
+      prev.map(s => {
+        if (s.id === editingSeller.id) {
+          const updated: Seller = {
+            ...s,
+            name: newSellerForm.name,
+            owner: newSellerForm.owner,
+            phone: newSellerForm.phone,
+            location: newSellerForm.location,
+            tier: newSellerForm.tier,
+            creditLimit: Number(newSellerForm.creditLimit) || s.creditLimit,
+            assignedAssistant: newSellerForm.assignedAssistant,
+            avatarId: newSellerForm.avatarId || s.avatarId || 'char-06'
+          };
+          dbUpsertSeller(updated);
+          return updated;
+        }
+        return s;
+      })
+    );
+    if (showToast) showToast(`Updated profile for retailer "${newSellerForm.name}"`, 'success');
+    setEditingSeller(null);
   };
 
   // --------------------------------------------------------------------------
@@ -381,7 +455,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       phone: assistant.phone,
       route: assistant.route,
       username: assistant.username,
-      defaultPass: assistant.defaultPass
+      defaultPass: assistant.defaultPass,
+      avatarId: assistant.avatarId || 'char-02'
     });
   };
 
@@ -392,14 +467,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     onUpdateAssistants(prev =>
       prev.map(a => {
         if (a.id === editingAssistant.id) {
-          const updated = {
+          const updated: Assistant = {
             ...a,
             name: newAssistantForm.name,
             shortName: newAssistantForm.shortName || newAssistantForm.name.split(' ')[0],
             phone: newAssistantForm.phone,
             route: newAssistantForm.route,
             username: newAssistantForm.username,
-            defaultPass: newAssistantForm.defaultPass
+            defaultPass: newAssistantForm.defaultPass,
+            avatarId: newAssistantForm.avatarId || a.avatarId || 'char-02'
           };
           dbUpsertAssistant(updated);
           return updated;
@@ -430,7 +506,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       cashInHand: 0,
       winningVouchers: 0,
       totalOrdersToday: 0,
-      avatarBg: 'bg-emerald-600 text-white'
+      avatarBg: 'bg-emerald-600 text-white',
+      avatarId: newAssistantForm.avatarId || 'char-02'
     };
 
     if (onUpdateAssistants) {
@@ -445,8 +522,45 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       phone: '',
       route: '',
       username: '',
-      defaultPass: '1234'
+      defaultPass: '1234',
+      avatarId: 'char-02'
     });
+  };
+
+  const handleSaveAdminProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    const updated: AdminProfile = {
+      id: adminProfileState.id || 'admin_1',
+      name: adminForm.name || 'W.M.G. චිත්රා වීරකෝන්',
+      title: adminForm.title || 'ලොතරැයි බෙදාහැරීම් කාර්යාලය • දෙහිඅත්තකණ්ඩිය',
+      phone: adminForm.phone || '+94 77 123 4567',
+      avatarId: adminForm.avatarId || adminProfileState.avatarId || 'char-01'
+    };
+    setAdminProfileState(updated);
+    if (onUpdateAdminProfile) {
+      onUpdateAdminProfile(updated);
+    }
+    dbUpsertAdminProfile(updated);
+    if (showToast) showToast('Admin profile saved and synced to Google Sheets!', 'success');
+    setShowEditAdminModal(false);
+  };
+
+  const handleAvatarSelected = (avatarId: string) => {
+    if (avatarPickerTarget === 'admin') {
+      const updated: AdminProfile = { ...adminProfileState, avatarId };
+      setAdminProfileState(updated);
+      setAdminForm(prev => ({ ...prev, avatarId }));
+      if (onUpdateAdminProfile) onUpdateAdminProfile(updated);
+      dbUpsertAdminProfile(updated);
+      if (showToast) showToast(`Admin character set to ${getAvatarById(avatarId).name} (${avatarId})`, 'success');
+    } else if (avatarPickerTarget === 'seller') {
+      setNewSellerForm(prev => ({ ...prev, avatarId }));
+      if (showToast) showToast(`Retailer character selected: ${getAvatarById(avatarId).name} (${avatarId})`, 'info');
+    } else if (avatarPickerTarget === 'assistant') {
+      setNewAssistantForm(prev => ({ ...prev, avatarId }));
+      if (showToast) showToast(`Assistant character selected: ${getAvatarById(avatarId).name} (${avatarId})`, 'info');
+    }
+    setAvatarPickerTarget(null);
   };
 
   // --------------------------------------------------------------------------
@@ -522,26 +636,69 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       
       {/* Top Banner & Active Indicator */}
       <div className="bg-white rounded-3xl p-6 sm:p-7 shadow-sm border border-gray-200/90 flex flex-col md:flex-row md:items-center justify-between gap-5">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="bg-orange-50 text-orange-700 border border-orange-200 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-              Admin Control Panel
-            </span>
-            <span className="text-xs font-black text-[#D64933] bg-[#FAF0E9] border border-[#F4DEC9] px-2.5 py-0.5 rounded-full">
-              {tabTitles[adminTab] || 'Admin Console'}
-            </span>
+        <div className="flex items-center gap-4">
+          <div className="relative shrink-0">
+            <AvatarDisplay
+              avatarId={adminProfileState.avatarId || 'char-01'}
+              name={adminProfileState.name}
+              size="xl"
+              showBadge={true}
+              className="ring-2 ring-orange-300 rounded-full"
+            />
+            <button
+              type="button"
+              onClick={() => setAvatarPickerTarget('admin')}
+              className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full bg-orange-600 hover:bg-orange-500 text-white font-bold text-[9px] shadow-sm uppercase tracking-wider cursor-pointer border border-white"
+              title="Change Admin Character Avatar"
+            >
+              Avatar
+            </button>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-black text-gray-900 mt-2 tracking-tight">
-            W.M.G. චිත්රා වීරකෝන්
-          </h2>
-          <p className="text-gray-600 text-xs sm:text-sm mt-0.5 font-semibold flex flex-wrap items-center gap-2">
-            <span className="text-orange-600 font-bold">ලොතරැයි බෙදාහැරීම් කාර්යාලය</span>
-            <span className="text-gray-300">•</span>
-            <span>බස් නැවතුම්පළ අසල, දෙහිඅත්තකණ්ඩිය</span>
-          </p>
+
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="bg-orange-50 text-orange-700 border border-orange-200 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                Admin Control Panel
+              </span>
+              <span className="text-xs font-black text-[#D64933] bg-[#FAF0E9] border border-[#F4DEC9] px-2.5 py-0.5 rounded-full">
+                {tabTitles[adminTab] || 'Admin Console'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 mt-1.5">
+              <h2 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
+                {adminProfileState.name}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShowEditAdminModal(true)}
+                className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer"
+                title="Edit Admin Profile Details"
+              >
+                <Edit3 className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-gray-600 text-xs sm:text-sm mt-0.5 font-semibold flex flex-wrap items-center gap-2">
+              <span className="text-orange-600 font-bold">{adminProfileState.title}</span>
+              {adminProfileState.phone && (
+                <>
+                  <span className="text-gray-300">•</span>
+                  <span className="text-stone-500 font-mono text-xs">{adminProfileState.phone}</span>
+                </>
+              )}
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
+          <button
+            onClick={() => setAvatarPickerTarget('admin')}
+            className="px-4 py-2.5 rounded-full bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-700 text-xs sm:text-sm font-bold flex items-center gap-2 shadow-xs transition-colors cursor-pointer"
+            title="Change Head Administrator Avatar Character"
+          >
+            <Sparkles className="w-4 h-4 text-orange-600" />
+            <span>Character Avatar</span>
+          </button>
+
           <button
             onClick={() => setShowDatabaseModal(true)}
             className={`px-4 py-2.5 rounded-full border text-xs sm:text-sm font-bold flex items-center gap-2 shadow-xs transition-colors cursor-pointer ${
@@ -825,16 +982,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     return (
                       <tr key={s.id} className="hover:bg-stone-50/70">
                         <td className="py-3 px-3 font-bold text-stone-900">
-                          <button
-                            type="button"
-                            onClick={() => setHistorySeller(s)}
-                            className="font-bold text-stone-900 hover:text-[#C25838] hover:underline text-left cursor-pointer flex items-center gap-1.5 group"
-                            title={`Click to view last 10 purchase full history for ${s.name}`}
-                          >
-                            <span>{s.name}</span>
-                            <History className="w-3.5 h-3.5 text-[#C25838] opacity-60 group-hover:opacity-100 transition-opacity" />
-                          </button>
-                          <span className="block text-[10px] text-stone-400 font-mono font-normal">ID: {s.id}</span>
+                          <div className="flex items-center gap-2.5">
+                            <AvatarDisplay
+                              avatarId={s.avatarId || 'char-06'}
+                              name={s.name}
+                              size="sm"
+                              showBadge={true}
+                              className="shrink-0"
+                            />
+                            <div className="min-w-0">
+                              <button
+                                type="button"
+                                onClick={() => setHistorySeller(s)}
+                                className="font-bold text-stone-900 hover:text-[#C25838] hover:underline text-left cursor-pointer flex items-center gap-1.5 group truncate"
+                                title={`Click to view last 10 purchase full history for ${s.name}`}
+                              >
+                                <span>{s.name}</span>
+                                <History className="w-3.5 h-3.5 text-[#C25838] opacity-60 group-hover:opacity-100 transition-opacity" />
+                              </button>
+                              <span className="block text-[10px] text-stone-400 font-mono font-normal">ID: {s.id}</span>
+                            </div>
+                          </div>
                         </td>
                         <td className="py-3 px-3">
                           <span className="font-semibold text-stone-800 block">{s.owner}</span>
@@ -917,6 +1085,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                           <button
                             type="button"
+                            onClick={() => handleOpenEditSeller(s)}
+                            className="p-1.5 rounded-full text-stone-500 hover:text-stone-900 hover:bg-stone-100 border border-stone-200 transition-colors cursor-pointer"
+                            title={`Edit ${s.name} Profile & Avatar`}
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+
+                          <button
+                            type="button"
                             onClick={() => setDeletingSeller(s)}
                             className="p-1.5 rounded-full text-stone-400 hover:text-rose-600 hover:bg-rose-50 border border-stone-200 hover:border-rose-200 transition-colors cursor-pointer"
                             title={`Delete ${s.name}`}
@@ -968,9 +1145,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 {/* Header Profile */}
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className={`w-12 h-12 rounded-2xl ${a.avatarBg} flex items-center justify-center font-black text-sm shadow-xs`}>
-                      {a.name.split(' ').map(n => n[0]).slice(0, 2).join('')}
-                    </div>
+                    <AvatarDisplay
+                      avatarId={a.avatarId || 'char-02'}
+                      name={a.name}
+                      size="lg"
+                      showBadge={true}
+                    />
                     <div>
                       <h4 className="font-extrabold text-stone-900 text-base">{a.name}</h4>
                       <p className="text-xs text-stone-500 flex items-center gap-1">
@@ -1236,26 +1416,65 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       )}
 
       {/* ==================================================================== */}
-      {/* MODAL 1.1: ADD NEW SELLER                                            */}
+      {/* MODAL 1.1: ADD / EDIT SELLER                                         */}
       {/* ==================================================================== */}
-      {showAddSellerModal && (
+      {(showAddSellerModal || editingSeller) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-lg bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-stone-200 space-y-5">
+          <div className="w-full max-w-lg bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-stone-200 space-y-5 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
               <div>
-                <h3 className="text-xl font-black text-stone-900 tracking-tight">Add New Seller</h3>
-                <p className="text-xs text-stone-500">Register retailer profile, assign tier, and allocate initial credit limit</p>
+                <h3 className="text-xl font-black text-stone-900 tracking-tight">
+                  {editingSeller ? 'Edit Retailer Profile' : 'Add New Seller'}
+                </h3>
+                <p className="text-xs text-stone-500">
+                  {editingSeller ? 'Update retailer details, pricing tier, and character avatar' : 'Register retailer profile, assign tier, and allocate initial credit limit'}
+                </p>
               </div>
               <button
                 type="button"
-                onClick={() => setShowAddSellerModal(false)}
+                onClick={() => {
+                  setShowAddSellerModal(false);
+                  setEditingSeller(null);
+                }}
                 className="p-2 rounded-full hover:bg-stone-100 text-stone-400 hover:text-stone-800"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateSeller} className="space-y-4">
+            <form onSubmit={editingSeller ? handleSaveSellerEdit : handleCreateSeller} className="space-y-4">
+              {/* Character Avatar Picker Section */}
+              <div>
+                <label className="text-xs font-bold text-stone-700 uppercase tracking-wider block mb-1">
+                  Retailer Character Avatar
+                </label>
+                <div className="flex items-center justify-between p-3 rounded-2xl bg-stone-50 border border-stone-200">
+                  <div className="flex items-center gap-3">
+                    <AvatarDisplay
+                      avatarId={newSellerForm.avatarId || 'char-06'}
+                      name={newSellerForm.name || 'Retailer'}
+                      size="md"
+                      showBadge={true}
+                    />
+                    <div>
+                      <span className="text-xs font-bold text-stone-900 block">
+                        {getAvatarById(newSellerForm.avatarId || 'char-06').name}
+                      </span>
+                      <span className="text-[10px] text-stone-500 font-mono">
+                        ID: {newSellerForm.avatarId || 'char-06'} • {getAvatarById(newSellerForm.avatarId || 'char-06').description}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAvatarPickerTarget('seller')}
+                    className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-orange-50 border border-stone-200 text-xs font-bold text-stone-700 hover:text-orange-600 transition-colors cursor-pointer shadow-2xs"
+                  >
+                    Change Character
+                  </button>
+                </div>
+              </div>
+
               <div>
                 <label className="text-xs font-bold text-stone-700 uppercase tracking-wider block mb-1">
                   Shop Name *
@@ -1361,7 +1580,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <div className="flex items-center justify-end gap-3 pt-3">
                 <button
                   type="button"
-                  onClick={() => setShowAddSellerModal(false)}
+                  onClick={() => {
+                    setShowAddSellerModal(false);
+                    setEditingSeller(null);
+                  }}
                   className="px-4 py-2.5 rounded-full border border-stone-200 text-stone-600 font-bold text-xs hover:bg-stone-100 transition-colors cursor-pointer"
                 >
                   Cancel
@@ -1370,7 +1592,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   type="submit"
                   className="px-5 py-2.5 rounded-full bg-[#9E2A1E] hover:bg-[#852318] text-white font-bold text-xs shadow-md shadow-[#9E2A1E]/20 transition-all cursor-pointer"
                 >
-                  Save & Add Seller
+                  {editingSeller ? 'Update Retailer' : 'Save & Add Seller'}
                 </button>
               </div>
             </form>
@@ -1488,6 +1710,38 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
 
             <form onSubmit={editingAssistant ? handleSaveAssistantEdit : handleCreateAssistant} className="space-y-4">
+              {/* Character Avatar Picker Section */}
+              <div>
+                <label className="text-xs font-bold text-stone-700 uppercase tracking-wider block mb-1">
+                  Field Assistant Character Avatar
+                </label>
+                <div className="flex items-center justify-between p-3 rounded-2xl bg-stone-50 border border-stone-200">
+                  <div className="flex items-center gap-3">
+                    <AvatarDisplay
+                      avatarId={newAssistantForm.avatarId || 'char-02'}
+                      name={newAssistantForm.name || 'Assistant'}
+                      size="md"
+                      showBadge={true}
+                    />
+                    <div>
+                      <span className="text-xs font-bold text-stone-900 block">
+                        {getAvatarById(newAssistantForm.avatarId || 'char-02').name}
+                      </span>
+                      <span className="text-[10px] text-stone-500 font-mono">
+                        ID: {newAssistantForm.avatarId || 'char-02'} • {getAvatarById(newAssistantForm.avatarId || 'char-02').description}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAvatarPickerTarget('assistant')}
+                    className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-orange-50 border border-stone-200 text-xs font-bold text-stone-700 hover:text-orange-600 transition-colors cursor-pointer shadow-2xs"
+                  >
+                    Change Character
+                  </button>
+                </div>
+              </div>
+
               <div>
                 <label className="text-xs font-bold text-stone-700 uppercase tracking-wider block mb-1">
                   Full Name *
@@ -2292,14 +2546,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </span>
                   <span className="text-[10px] text-stone-500 font-medium">Native .csv format</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <button
                     type="button"
                     onClick={() => exportTransactionsToExcel(transactions)}
                     className="p-3 rounded-xl bg-white hover:bg-stone-100 border border-stone-200 text-stone-800 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
                   >
                     <Download className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Download Ledger (Excel)</span>
+                    <span>Ledger (Excel)</span>
                   </button>
 
                   <button
@@ -2308,7 +2562,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     className="p-3 rounded-xl bg-white hover:bg-stone-100 border border-stone-200 text-stone-800 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
                   >
                     <Download className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Download Retailers (Excel)</span>
+                    <span>Retailers (Excel)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => exportAssistantsToExcel(assistants)}
+                    className="p-3 rounded-xl bg-white hover:bg-stone-100 border border-stone-200 text-stone-800 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
+                  >
+                    <Download className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Assistants (Excel)</span>
                   </button>
                 </div>
               </div>
@@ -2344,6 +2607,148 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         </div>
       )}
+
+      {/* ==================================================================== */}
+      {/* MODAL: EDIT HEAD ADMINISTRATOR PROFILE                               */}
+      {/* ==================================================================== */}
+      {showEditAdminModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="w-full max-w-lg bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-stone-200 space-y-5">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+              <div>
+                <h3 className="text-xl font-black text-stone-900 tracking-tight">
+                  Edit Head Administrator Profile
+                </h3>
+                <p className="text-xs text-stone-500">
+                  Configure administrator display identity, office title, phone, and character avatar
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEditAdminModal(false)}
+                className="p-2 rounded-full hover:bg-stone-100 text-stone-400 hover:text-stone-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveAdminProfile} className="space-y-4">
+              {/* Character Avatar Picker Section */}
+              <div>
+                <label className="text-xs font-bold text-stone-700 uppercase tracking-wider block mb-1">
+                  Administrator Character Avatar
+                </label>
+                <div className="flex items-center justify-between p-3 rounded-2xl bg-stone-50 border border-stone-200">
+                  <div className="flex items-center gap-3">
+                    <AvatarDisplay
+                      avatarId={adminForm.avatarId || adminProfileState.avatarId || 'char-01'}
+                      name={adminForm.name || 'Admin'}
+                      size="md"
+                      showBadge={true}
+                    />
+                    <div>
+                      <span className="text-xs font-bold text-stone-900 block">
+                        {getAvatarById(adminForm.avatarId || adminProfileState.avatarId || 'char-01').name}
+                      </span>
+                      <span className="text-[10px] text-stone-500 font-mono">
+                        ID: {adminForm.avatarId || adminProfileState.avatarId || 'char-01'} • {getAvatarById(adminForm.avatarId || adminProfileState.avatarId || 'char-01').description}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAvatarPickerTarget('admin')}
+                    className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-orange-50 border border-stone-200 text-xs font-bold text-stone-700 hover:text-orange-600 transition-colors cursor-pointer shadow-2xs"
+                  >
+                    Change Character
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-stone-700 uppercase tracking-wider block mb-1">
+                  Admin Full Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. W.M.G. චිත්රා වීරකෝන්"
+                  value={adminForm.name}
+                  onChange={(e) => setAdminForm({ ...adminForm, name: e.target.value })}
+                  className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-stone-900 focus:outline-none focus:border-[#9E2A1E]"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-stone-700 uppercase tracking-wider block mb-1">
+                  Office / Route Depot Title *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. ලොතරැයි බෙදාහැරීම් කාර්යාලය • දෙහිඅත්තකණ්ඩිය"
+                  value={adminForm.title}
+                  onChange={(e) => setAdminForm({ ...adminForm, title: e.target.value })}
+                  className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-stone-900 focus:outline-none focus:border-[#9E2A1E]"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-stone-700 uppercase tracking-wider block mb-1">
+                  Office Phone
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. +94 77 123 4567"
+                  value={adminForm.phone || ''}
+                  onChange={(e) => setAdminForm({ ...adminForm, phone: e.target.value })}
+                  className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-stone-900 focus:outline-none focus:border-[#9E2A1E]"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowEditAdminModal(false)}
+                  className="px-4 py-2.5 rounded-full border border-stone-200 text-stone-600 font-bold text-xs hover:bg-stone-100 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-full bg-[#9E2A1E] hover:bg-[#852318] text-white font-bold text-xs shadow-md shadow-[#9E2A1E]/20 transition-all cursor-pointer"
+                >
+                  Save Admin Profile
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* GLOBAL CHARACTER AVATAR PICKER MODAL (FOR ADMIN, SELLER, ASSISTANT)  */}
+      {/* ==================================================================== */}
+      <AvatarPickerModal
+        isOpen={avatarPickerTarget !== null}
+        onClose={() => setAvatarPickerTarget(null)}
+        selectedAvatarId={
+          avatarPickerTarget === 'admin'
+            ? (adminForm.avatarId || adminProfileState.avatarId || 'char-01')
+            : avatarPickerTarget === 'seller'
+            ? (newSellerForm.avatarId || 'char-06')
+            : (newAssistantForm.avatarId || 'char-02')
+        }
+        onSelectAvatar={handleAvatarSelected}
+        title={
+          avatarPickerTarget === 'admin'
+            ? 'Select Head Administrator Character Avatar'
+            : avatarPickerTarget === 'seller'
+            ? 'Select Retailer Character Avatar'
+            : 'Select Field Assistant Character Avatar'
+        }
+        subtitle="Choose an authentic Sri Lankan character ID to save in Google Sheets & profile records"
+      />
 
     </div>
   );
