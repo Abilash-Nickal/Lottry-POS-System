@@ -49,25 +49,35 @@ export const NonWinningModal: React.FC<NonWinningModalProps> = ({
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
       <div className="bg-white border border-stone-200/80 rounded-3xl w-full max-w-lg max-h-[90vh] flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
         
-        <div className="p-5 border-b border-stone-200/80 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-stone-100 border border-stone-200 flex items-center justify-center text-stone-900 font-bold text-lg">
+        <div className="relative p-5 text-white flex items-center justify-between shrink-0 overflow-hidden rounded-t-3xl border-b border-white/10">
+          {/* Lottery Balls Background with Blur */}
+          <div 
+            className="absolute inset-0 bg-cover bg-center pointer-events-none scale-105"
+            style={{
+              backgroundImage: `url('/background/popup_bg.png')`,
+              filter: 'blur(3px)'
+            }}
+          />
+          <div className="absolute inset-0 bg-stone-950/80 backdrop-blur-xs pointer-events-none" />
+
+          <div className="relative z-10 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-white/10 border border-white/15 text-rose-400 flex items-center justify-center font-bold text-lg">
               ❌
             </div>
             <div>
-              <h3 className="text-lg font-black text-stone-900">
-                Action 3.4: Non-Winning Returning Tickets
+              <h3 className="text-lg font-black text-white">
+                Non-Winning Returning Tickets
               </h3>
-              <p className="text-xs text-stone-500">
+              <p className="text-xs text-stone-300">
                 Lottery Scheme Draw-backs & Stubs Reimbursement • Reduces Debt
               </p>
             </div>
           </div>
           <button 
             onClick={onClose}
-            className="p-2 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-500 hover:text-stone-800 transition-colors"
+            className="relative z-10 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 

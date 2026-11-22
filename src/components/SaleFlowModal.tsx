@@ -103,23 +103,32 @@ export const SaleFlowModal: React.FC<SaleFlowModalProps> = ({
     return (
       <div className="max-w-3xl mx-auto space-y-6 animate-in fade-in duration-300">
         
-        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex items-center justify-between">
-          <div className="flex items-center gap-3.5">
+        <div className="relative p-6 text-white flex items-center justify-between shrink-0 overflow-hidden rounded-3xl border border-white/10 shadow-sm">
+          <div 
+            className="absolute inset-0 bg-cover bg-center pointer-events-none scale-105"
+            style={{
+              backgroundImage: `url('/background/popup_bg.png')`,
+              filter: 'blur(3px)'
+            }}
+          />
+          <div className="absolute inset-0 bg-stone-950/80 backdrop-blur-xs pointer-events-none" />
+
+          <div className="relative z-10 flex items-center gap-3.5">
             <button
               onClick={onBack}
-              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
+              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+              <span className="bg-[#FAF0E9]/15 text-[#D68A64] border border-[#F4DEC9]/30 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
                 Action 3.1 Sale • Category Selection
               </span>
-              <h2 className="text-xl font-black text-slate-900 mt-1">
+              <h2 className="text-xl font-black text-white mt-1">
                 Select Ticket Type for {currentSeller.name}
               </h2>
-              <p className="text-xs text-slate-500">
-                Pricing Applied: <strong className="text-amber-600">{currentSeller.tier} Rates</strong>
+              <p className="text-xs text-stone-300">
+                Pricing Applied: <strong className="text-amber-400">{currentSeller.tier} Rates</strong>
               </p>
             </div>
           </div>
@@ -220,20 +229,29 @@ export const SaleFlowModal: React.FC<SaleFlowModalProps> = ({
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-300">
       
-      {/* Top Header */}
-      <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm flex items-center justify-between">
-        <div className="flex items-center gap-3.5">
+      {/* Top Header with Dark Lottery Balls Background & Blur */}
+      <div className="relative p-5 text-white flex items-center justify-between shrink-0 overflow-hidden rounded-3xl border border-white/10 shadow-sm">
+        <div 
+          className="absolute inset-0 bg-cover bg-center pointer-events-none scale-105"
+          style={{
+            backgroundImage: `url('/background/popup_bg.png')`,
+            filter: 'blur(3px)'
+          }}
+        />
+        <div className="absolute inset-0 bg-stone-950/80 backdrop-blur-xs pointer-events-none" />
+
+        <div className="relative z-10 flex items-center gap-3.5">
           <button
             onClick={() => setSubStep('CATEGORY')}
-            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
+            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+            <span className="bg-[#FAF0E9]/15 text-[#D68A64] border border-[#F4DEC9]/30 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
               Step 3.1 • {saleCategory === 'daily' ? 'Draw Sale Tickets' : 'Instant Scratch Tickets'}
             </span>
-            <h2 className="text-lg sm:text-xl font-black text-slate-900 mt-0.5">
+            <h2 className="text-lg sm:text-xl font-black text-white mt-0.5">
               Select Schedule Date & Add Ticket Quantities
             </h2>
           </div>

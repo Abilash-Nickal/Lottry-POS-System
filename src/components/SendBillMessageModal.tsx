@@ -108,14 +108,23 @@ export const SendBillMessageModal: React.FC<SendBillMessageModalProps> = ({
     <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
       <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-stone-200 overflow-hidden my-6 flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200">
         
-        {/* Header */}
-        <div className="p-4 sm:p-5 bg-gradient-to-r from-stone-900 to-stone-800 text-white flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#FAF0E9]/20 border border-white/20 text-orange-400 flex items-center justify-center font-bold">
-              <Smartphone className="w-5 h-5 text-orange-400" />
+        {/* Header with Dark Lottery Balls Background & Blur */}
+        <div className="relative p-4 sm:p-5 text-white flex items-center justify-between shrink-0 overflow-hidden rounded-t-3xl border-b border-white/10">
+          <div 
+            className="absolute inset-0 bg-cover bg-center pointer-events-none scale-105"
+            style={{
+              backgroundImage: `url('/background/popup_bg.png')`,
+              filter: 'blur(3px)'
+            }}
+          />
+          <div className="absolute inset-0 bg-stone-950/80 backdrop-blur-xs pointer-events-none" />
+
+          <div className="relative z-10 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-white/10 border border-white/15 text-emerald-400 flex items-center justify-center font-bold">
+              <Smartphone className="w-5 h-5 text-emerald-400" />
             </div>
             <div>
-              <h3 className="text-base sm:text-lg font-black tracking-tight">
+              <h3 className="text-base sm:text-lg font-black tracking-tight text-white">
                 Send Bill to Customer Phone
               </h3>
               <p className="text-xs text-stone-300">
@@ -127,7 +136,7 @@ export const SendBillMessageModal: React.FC<SendBillMessageModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+            className="relative z-10 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>

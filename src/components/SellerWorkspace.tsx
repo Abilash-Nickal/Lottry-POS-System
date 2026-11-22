@@ -806,18 +806,30 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
         <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
           <div className="bg-white rounded-3xl max-w-4xl w-full shadow-2xl border border-stone-200 overflow-hidden my-6 flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200">
             
-            {/* Modal Header */}
-            <div className="p-4 sm:p-5 bg-gradient-to-r from-stone-900 to-stone-800 text-white flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-[#FAF0E9]/20 border border-white/20 text-orange-400 flex items-center justify-center font-bold">
-                  <ShoppingBag className="w-5 h-5" />
+            {/* Modal Header with Dark Lottery Balls Background & Blur */}
+            <div className="relative p-4 sm:p-5 text-white flex items-center justify-between shrink-0 overflow-hidden rounded-t-3xl border-b border-white/10">
+              {/* Lottery Balls Background Image with Blur */}
+              <div 
+                className="absolute inset-0 bg-cover bg-center pointer-events-none scale-105"
+                style={{
+                  backgroundImage: `url('/background/popup_bg.png')`,
+                  filter: 'blur(3px)'
+                }}
+              />
+              {/* Dark Overlay for Deep Contrast */}
+              <div className="absolute inset-0 bg-stone-950/80 backdrop-blur-xs pointer-events-none" />
+
+              {/* Foreground Content */}
+              <div className="relative z-10 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-white/10 border border-white/15 text-[#D68A64] flex items-center justify-center font-bold">
+                  <ShoppingBag className="w-5 h-5 text-[#D68A64]" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-base sm:text-lg font-black tracking-tight">
+                    <h3 className="text-base sm:text-lg font-black tracking-tight text-white">
                       Ticket Sale & Dispatch
                     </h3>
-                    <span className="bg-orange-500/20 text-orange-300 border border-orange-500/40 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
+                    <span className="bg-[#FAF0E9]/15 text-[#D68A64] border border-[#F4DEC9]/30 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
                       {currentSeller.tier} Pricing
                     </span>
                   </div>
@@ -830,7 +842,7 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveModal(null)}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+                className="relative z-10 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>

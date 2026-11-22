@@ -33,17 +33,26 @@ export const FinalReceiptModal: React.FC<FinalReceiptModalProps> = ({
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
       <div className="bg-white text-stone-900 rounded-3xl w-full max-w-xl max-h-[92vh] flex flex-col shadow-2xl relative border border-stone-300/80 animate-in zoom-in-95 duration-200">
         
-        {/* Modal Header: Clean Official Title, NO Edit Button */}
-        <div className="p-4 sm:p-5 border-b border-stone-200 flex items-center justify-between gap-3 bg-stone-50/80 rounded-t-3xl">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-2xl bg-[#18181B] text-white flex items-center justify-center font-bold text-base shadow-xs">
-              <Receipt className="w-5 h-5" />
+        {/* Modal Header: Clean Official Title with Dark Lottery Balls Background & Blur */}
+        <div className="relative p-4 sm:p-5 text-white flex items-center justify-between shrink-0 overflow-hidden rounded-t-3xl border-b border-white/10">
+          <div 
+            className="absolute inset-0 bg-cover bg-center pointer-events-none scale-105"
+            style={{
+              backgroundImage: `url('/background/popup_bg.png')`,
+              filter: 'blur(3px)'
+            }}
+          />
+          <div className="absolute inset-0 bg-stone-950/80 backdrop-blur-xs pointer-events-none" />
+
+          <div className="relative z-10 flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-2xl bg-white/10 border border-white/15 text-white flex items-center justify-center font-bold text-base shadow-xs">
+              <Receipt className="w-5 h-5 text-amber-400" />
             </div>
             <div>
-              <h3 className="text-sm sm:text-base font-extrabold text-stone-900 flex items-center gap-1.5">
+              <h3 className="text-sm sm:text-base font-extrabold text-white flex items-center gap-1.5">
                 Receipt Slip
               </h3>
-              <p className="text-[11px] text-stone-500 font-mono">
+              <p className="text-[11px] text-stone-300 font-mono">
                 SLIP #{completedSlip.id} • {completedSlip.date}
               </p>
             </div>
@@ -52,7 +61,7 @@ export const FinalReceiptModal: React.FC<FinalReceiptModalProps> = ({
           <button 
             type="button"
             onClick={onClose}
-            className="p-2 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-500 hover:text-stone-800 transition-colors"
+            className="relative z-10 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
             title="Close Receipt"
           >
             <X className="w-4 h-4" />
