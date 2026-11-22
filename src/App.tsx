@@ -98,7 +98,8 @@ export default function LotteryDistributorPOS() {
     handleConfirmCash,
     openAllInOneReceipt,
     handleToggleFreeze,
-    handleResetSellerOrder
+    handleResetSellerOrder,
+    handleFinalizeSessionSlip
   } = usePOSState();
 
   // Active Action Tab for Master-Detail Split View (3.1 to 3.5)
@@ -231,6 +232,7 @@ export default function LotteryDistributorPOS() {
             brands={brands}
             onBackToDirectory={() => setCurrentStep('SELLER_SELECT')}
             onOpenFinalReceipt={() => openAllInOneReceipt()}
+            onFinalizeOrder={handleFinalizeSessionSlip}
             onConfirmSaleDispatch={handleConfirmSaleDispatch}
             onConfirmReturn={handleConfirmReturn}
             onConfirmWinning={handleConfirmWinning}

@@ -342,74 +342,42 @@ export function usePOSState() {
     const targetSeller = customSeller || currentSeller;
     if (!targetSeller) return;
 
-    // Collect all transactions for this seller
+    if (completedSlip && completedSlip.sellerId === targetSeller.id) {
+      return;
+    }
+
     const txns = transactions.filter(t => t.sellerId === targetSeller.id);
-    const sortedTxns = [...txns].reverse(); // Oldest to newest
-    
-    // Starting credit before today's transactions
-    const creditsOld = sortedTxns.length > 0 ? sortedTxns[0].previousCredit : targetSeller.currentCredit;
+    const latestTxn = txns[0];
 
-    const salesItems: Array<{
-      dateStr: string;
-      brandName: string;
-      packs: number;
-      tickets: number;
-      rate: number;
-      subtotal: number;
-    }> = [];
-
-    let returningAmount = 0;
-    let returningPacksCount = 0;
-    let winningAmount = 0;
-    let winningTicketsCount = '';
-    let cashPayingAmount = 0;
-    let cashRef = '';
-    let nonWinningAmount = 0;
-
-    txns.forEach(t => {
-      if (t.actionType?.includes('SALE') || (t.typeLabel && t.typeLabel.includes('Sale')) || t.deltaCredit > 0) {
-        if (t.details?.items && t.details.items.length > 0) {
-          t.details.items.forEach(it => {
-            const rawDate = it.dateStr || t.details?.targetDay || t.date?.split(' ')[0] || '10/15/2026';
-            let dateStr = rawDate;
-            if (rawDate.includes('(')) {
-              const match = rawDate.match(/\((.*?)\)/);
-              if (match) dateStr = match[1].split(' - ')[0];
-            } else if (rawDate.includes(' ')) {
-              dateStr = rawDate.split(' ')[0];
-            }
-            salesItems.push({
-              dateStr,
-              brandName: it.brandName,
-              packs: it.packs,
-              tickets: it.tickets || (it.packs * 100),
-              rate: it.rate,
-              subtotal: it.subtotal
-            });
-          });
-        } else {
-          salesItems.push({
-            dateStr: t.date?.split(' ')[0] || '10/15/2026',
-            brandName: 'Govisetha',
-            packs: 2,
-            tickets: 200,
-            rate: 10,
-            subtotal: t.deltaCredit
-          });
-        }
-      } else if (t.actionType?.includes('RETURN') || (t.typeLabel && t.typeLabel.includes('Return'))) {
-        returningAmount += Math.abs(t.deltaCredit);
-        returningPacksCount += (t.details?.totalPacks || 1);
-      } else if (t.actionType?.includes('WINNING') || (t.typeLabel && t.typeLabel.includes('Winning'))) {
-        winningAmount += Math.abs(t.deltaCredit);
-        winningTicketsCount = t.details?.ticketCount || 'Verified Prize Vouchers';
-      } else if (t.actionType?.includes('CASH') || (t.typeLabel && t.typeLabel.includes('Cash'))) {
-        cashPayingAmount += Math.abs(t.deltaCredit);
-        cashRef = t.details?.reference || 'Direct Cash Collection';
-      } else if (t.actionType?.includes('NON_WINNING') || (t.typeLabel && t.typeLabel.includes('Non-Winning'))) {
-        nonWinningAmount += Math.abs(t.deltaCredit);
-      }
-    });
+    if (latestTxn && latestTxn.details) {
+      const d = latestTxn.details;
+      const slipObj: CompletedSlip = {
+        id: latestTxn.id.replace('TXN-', 'RCPT-'),
+        date: latestTxn.date,
+        sellerId: targetSeller.id,
+        sellerName: targetSeller.name,
+        seller: targetSeller,
+        assistantId: currentAssistant.id,
+        assistantName: currentAssistant.shortName,
+        assistant: currentAssistant,
+        isConsolidated: true,
+        typeLabel: 'Wholesale Distribution Slip',
+        creditsOld: latestTxn.previousCredit,
+        previousCredit: latestTxn.previousCredit,
+        salesItems: d.items || [],
+        returningAmount: d.totalRefund || 0,
+        returningPacksCount: d.totalPacks || 0,
+        winningAmount: d.totalWinningOffset || 0,
+        winningTicketsCount: d.ticketCount || '',
+        cashPayingAmount: d.cashAmount || 0,
+        cashRef: d.reference || '',
+        nonWinningAmount: d.totalReimbursement || 0,
+        finalCredit: latestTxn.newCredit,
+        newCredit: latestTxn.newCredit
+      };
+      setCompletedSlip(slipObj);
+      return;
+    }
 
     const slipObj: CompletedSlip = {
       id: `RCPT-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -421,21 +389,20 @@ export function usePOSState() {
       assistantName: currentAssistant.shortName,
       assistant: currentAssistant,
       isConsolidated: true,
-      typeLabel: 'All-In-One Wholesale Receipt',
-      previousCredit: creditsOld,
-      creditsOld: creditsOld,
-      salesItems,
-      returningAmount,
-      returningPacksCount,
-      winningAmount,
-      winningTicketsCount,
-      cashPayingAmount,
-      cashRef,
-      nonWinningAmount,
+      typeLabel: 'Wholesale Distribution Slip',
+      creditsOld: targetSeller.currentCredit,
+      previousCredit: targetSeller.currentCredit,
+      salesItems: [],
+      returningAmount: 0,
+      returningPacksCount: 0,
+      winningAmount: 0,
+      winningTicketsCount: '',
+      cashPayingAmount: 0,
+      cashRef: '',
+      nonWinningAmount: 0,
       finalCredit: targetSeller.currentCredit,
       newCredit: targetSeller.currentCredit
     };
-
     setCompletedSlip(slipObj);
   };
 
@@ -452,60 +419,84 @@ export function usePOSState() {
     showToast(`${sObj?.name} is now ${!sObj?.isFrozen ? 'FROZEN' : 'ACTIVE'}`, 'info');
   };
 
-  // Case 13: Reset current bill / order for selected seller
-  const handleResetSellerOrder = () => {
-    if (!currentSeller) return;
-
-    const thisSellerTxns = transactions.filter(t => t.sellerId === currentSeller.id);
-
-    // Revert assistant cash & winning voucher collections logged in these transactions
-    let cashToRevert = 0;
-    let winningToRevert = 0;
-    thisSellerTxns.forEach(t => {
-      if (t.actionType === '3.5 CASH' || (t.typeLabel && t.typeLabel.includes('Cash'))) {
-        cashToRevert += Math.abs(t.deltaCredit);
-      } else if (t.actionType === '3.3 WINNING' || (t.typeLabel && t.typeLabel.includes('Winning'))) {
-        winningToRevert += Math.abs(t.deltaCredit);
+  // Finalize an active visit bill session
+  const handleFinalizeSessionSlip = async (slip: CompletedSlip) => {
+    // 1. Update seller in state
+    setSellers(prev => prev.map(s => {
+      if (s.id === slip.sellerId) {
+        return {
+          ...s,
+          currentCredit: slip.finalCredit,
+          isFrozen: slip.finalCredit > s.creditLimit
+        };
       }
-    });
+      return s;
+    }));
 
-    if (cashToRevert > 0 || winningToRevert > 0) {
+    // 2. Update assistant collections
+    if (slip.cashPayingAmount || slip.winningAmount) {
       setAssistants(prev => prev.map(a => {
         if (a.id === currentAssistant.id) {
           return {
             ...a,
-            cashInHand: Math.max(0, a.cashInHand - cashToRevert),
-            winningVouchers: Math.max(0, a.winningVouchers - winningToRevert)
+            cashInHand: a.cashInHand + (slip.cashPayingAmount || 0),
+            winningVouchers: a.winningVouchers + (slip.winningAmount || 0),
+            totalOrdersToday: a.totalOrdersToday + 1
           };
         }
         return a;
       }));
     }
 
-    // Filter out transactions for this seller
-    const remainingTxns = transactions.filter(t => t.sellerId !== currentSeller.id);
-    setTransactions(remainingTxns);
+    // 3. Record session transaction in audit history
+    const grossTotal = slip.salesItems?.reduce((sum, item) => sum + item.subtotal, 0) || 0;
+    const offsetsTotal = (slip.returningAmount || 0) + (slip.winningAmount || 0) + (slip.nonWinningAmount || 0) + (slip.cashPayingAmount || 0);
+    const netBill = grossTotal - offsetsTotal;
 
-    // Revert seller debt to original balance (or 0)
-    const sorted = [...thisSellerTxns].reverse();
-    const prevCredit = sorted.length > 0 ? (sorted[0].previousCredit || 0) : 0;
-    const resetCredit = prevCredit >= 0 ? prevCredit : 0;
-
-    setSellers(prev => prev.map(s => {
-      if (s.id === currentSeller.id) {
-        return {
-          ...s,
-          currentCredit: resetCredit,
-          isFrozen: resetCredit > s.creditLimit ? true : false
-        };
+    const newTxn: Transaction = {
+      id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
+      date: slip.date,
+      sellerId: slip.sellerId,
+      sellerName: slip.sellerName,
+      assistantId: currentAssistant.id,
+      assistantName: currentAssistant.shortName,
+      actionType: '3.0 SETTLEMENT',
+      typeLabel: `Order Slip #${slip.id}`,
+      deltaCredit: netBill,
+      previousCredit: slip.creditsOld,
+      newCredit: slip.finalCredit,
+      notes: `Net Session Bill: ${formatLKR(netBill)} | Prev Debt: ${formatLKR(slip.creditsOld)} | New Total Debt: ${formatLKR(slip.finalCredit)}`,
+      details: {
+        items: slip.salesItems,
+        totalBill: grossTotal,
+        totalRefund: slip.returningAmount,
+        totalPacks: slip.returningPacksCount,
+        totalWinningOffset: slip.winningAmount,
+        ticketCount: slip.winningTicketsCount,
+        cashAmount: slip.cashPayingAmount,
+        reference: slip.cashRef,
+        totalReimbursement: slip.nonWinningAmount
       }
-      return s;
-    }));
+    };
 
-    // Update LocalStorage and Google Sheets
-    dbResetSellerTransactions(currentSeller.id, resetCredit, remainingTxns);
+    setTransactions(prev => [newTxn, ...prev]);
+    setCompletedSlip(slip);
 
-    showToast(`Bill reset! All order items cleared for ${currentSeller.name}`, 'info');
+    // 4. Persist to database & cloud
+    await dbUpsertSeller({
+      ...currentSeller,
+      currentCredit: slip.finalCredit,
+      isFrozen: slip.finalCredit > currentSeller.creditLimit
+    });
+    dbRecordTransaction(newTxn, slip.finalCredit);
+
+    showToast(`Order confirmed! Receipt #${slip.id} saved to cloud.`, 'success');
+  };
+
+  // Case 13: Reset current bill / order for selected seller
+  // Real-world logic: resets ONLY the active unconfirmed session values; leaves past transactions & customer debt intact
+  const handleResetSellerOrder = () => {
+    showToast('Current bill inputs cleared. Past customer ledger preserved.', 'info');
   };
 
   return {
@@ -570,6 +561,7 @@ export function usePOSState() {
     handleConfirmCash,
     openAllInOneReceipt,
     handleToggleFreeze,
-    handleResetSellerOrder
+    handleResetSellerOrder,
+    handleFinalizeSessionSlip
   };
-}
+};

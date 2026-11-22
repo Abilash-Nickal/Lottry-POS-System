@@ -140,8 +140,17 @@ code, pre, .font-mono {
     background-image: none !important;
     width: 80mm !important;
     max-width: 80mm !important;
+    height: auto !important;
+    overflow: visible !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+  }
+
+  /* Unconstrain all parent containers so the receipt never gets clipped */
+  div, main, section, [class*="overflow-"], [class*="max-h-"], [class*="fixed"] {
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
   }
 
   body::before,
@@ -164,19 +173,20 @@ code, pre, .font-mono {
   }
 
   #printable-receipt {
-    position: absolute !important;
+    position: relative !important;
+    display: block !important;
     left: 0 !important;
     top: 0 !important;
     width: 78mm !important;
     max-width: 78mm !important;
-    margin: 0 !important;
+    margin: 0 auto !important;
     padding: 2mm 3mm !important;
     box-shadow: none !important;
     border: none !important;
     background: #ffffff !important;
     background-color: #ffffff !important;
     color: #000000 !important;
-    page-break-inside: avoid;
+    overflow: visible !important;
   }
 }
 

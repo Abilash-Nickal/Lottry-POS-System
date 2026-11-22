@@ -3,7 +3,6 @@ import {
   ArrowLeft, 
   MapPin, 
   Phone, 
-  Lock, 
   ShoppingBag, 
   RotateCcw, 
   Trophy, 
@@ -24,7 +23,7 @@ import {
   Loader2,
   Smartphone
 } from 'lucide-react';
-import { Seller, Assistant, Transaction, LotteryBrand, ForwardDay } from '../types';
+import { Seller, Assistant, Transaction, LotteryBrand, ForwardDay, CompletedSlip, SalesItem, ReturnItem } from '../types';
 import { formatLKR, getForward7Days } from '../utils/formatters';
 import { RecentLedgerPage } from './RecentLedgerPage';
 import { AvatarDisplay } from './AvatarDisplay';
@@ -33,7 +32,6 @@ import { WinningModal } from './ActionModals/WinningModal';
 import { NonWinningModal } from './ActionModals/NonWinningModal';
 import { CashModal } from './ActionModals/CashModal';
 import { SendBillMessageModal } from './SendBillMessageModal';
-import { dbUpsertSeller } from '../lib/databaseService';
 
 interface SellerWorkspaceProps {
   currentSeller: Seller;
@@ -42,46 +40,12 @@ interface SellerWorkspaceProps {
   brands: LotteryBrand[];
   onBackToDirectory: () => void;
   onOpenFinalReceipt: () => void;
-  onConfirmSaleDispatch: (data: {
-    categoryDesc: string;
-    targetDayStr: string;
-    items: Array<{
-      dateStr: string;
-      brandName: string;
-      packs: number;
-      tickets: number;
-      rate: number;
-      subtotal: number;
-    }>;
-    totalPacks: number;
-    totalTickets: number;
-    totalBill: number;
-    dispatchNote: string;
-  }) => void;
-  onConfirmReturn: (data: {
-    returnItems: Array<{ brandName: string; packs: number; rate: number; subtotal: number }>;
-    totalPacks: number;
-    totalRefund: number;
-    reason: string;
-    batchRef: string;
-  }) => void;
-  onConfirmWinning: (data: {
-    totalWinningOffset: number;
-    envelopeNo: string;
-    ticketCount: string;
-    breakdown: Record<string, string>;
-  }) => void;
-  onConfirmNonWinning: (data: {
-    brandName: string;
-    stubCount: string;
-    ratePerStub: string;
-    schemeRef: string;
-    totalReimbursement: number;
-  }) => void;
-  onConfirmCash: (data: {
-    cashAmount: number;
-    reference: string;
-  }) => void;
+  onFinalizeOrder?: (slip: CompletedSlip) => void;
+  onConfirmSaleDispatch?: (data: any) => void;
+  onConfirmReturn?: (data: any) => void;
+  onConfirmWinning?: (data: any) => void;
+  onConfirmNonWinning?: (data: any) => void;
+  onConfirmCash?: (data: any) => void;
   onResetOrder?: () => void;
 }
 
@@ -92,11 +56,7 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
   brands,
   onBackToDirectory,
   onOpenFinalReceipt,
-  onConfirmSaleDispatch,
-  onConfirmReturn,
-  onConfirmWinning,
-  onConfirmNonWinning,
-  onConfirmCash,
+  onFinalizeOrder,
   onResetOrder
 }) => {
   // Toggle for full-page ledger view
@@ -105,61 +65,45 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
   // Active Pop-up Screen Modal ('SALE' | 'RETURN' | 'WINNING' | 'NON_WINNING' | 'CASH' | null)
   const [activeModal, setActiveModal] = useState<'SALE' | 'RETURN' | 'WINNING' | 'NON_WINNING' | 'CASH' | null>(null);
 
-  // Financial Metrics
-  const currentCredit = currentSeller.currentCredit;
-  const creditLimit = currentSeller.creditLimit;
-  const availableCredit = Math.max(0, creditLimit - currentCredit);
-  const percent = Math.min(100, Math.round((currentCredit / (creditLimit || 1)) * 100));
-
-  // Cloud sync & printing state
+  // Cloud sync & saving state
   const [isSavingCloud, setIsSavingCloud] = useState(false);
   const [cloudSavedAt, setCloudSavedAt] = useState<string | null>(null);
   const [showSyncSuccess, setShowSyncSuccess] = useState(false);
 
-  // Message & Reset Bill States
+  // Modals for SMS/WhatsApp and Reset Confirmation
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
-  const handleDirectPrint = () => {
-    onOpenFinalReceipt();
-    // Allow modal to render then trigger print
-    setTimeout(() => {
-      window.print();
-    }, 350);
-  };
+  // --------------------------------------------------------------------------
+  // ACTIVE VISIT BILL SESSION STATE (Isolated to this current order only)
+  // --------------------------------------------------------------------------
+  const [sessionSales, setSessionSales] = useState<SalesItem[]>([]);
+  const [sessionReturns, setSessionReturns] = useState<ReturnItem[]>([]);
+  const [sessionReturnPacks, setSessionReturnPacks] = useState(0);
+  const [sessionReturnRefund, setSessionReturnRefund] = useState(0);
+  
+  const [sessionWinning, setSessionWinning] = useState<{
+    totalAmount: number;
+    envelopeNo: string;
+    ticketCount: string;
+    breakdown?: Record<string, string>;
+  } | null>(null);
 
-  const handleResetBill = () => {
-    setSaleTicketCounts({});
-    setSaleDispatchNote('');
-    setCloudSavedAt(null);
-    setShowSyncSuccess(false);
-    setShowResetConfirm(false);
-    if (onResetOrder) {
-      onResetOrder();
-    }
-  };
+  const [sessionNonWinning, setSessionNonWinning] = useState<{
+    brandName: string;
+    stubCount: string;
+    ratePerStub: string;
+    schemeRef: string;
+    totalAmount: number;
+  } | null>(null);
 
-  const handleConfirmOrderCloud = async () => {
-    setIsSavingCloud(true);
-    try {
-      if (saleMath.totalPacks > 0 && !saleMath.isProjectedExceeded) {
-        handleExecuteSale();
-      }
-      // Save current seller state to database & Google Sheets
-      await dbUpsertSeller(currentSeller);
-      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      setCloudSavedAt(timeStr);
-      setShowSyncSuccess(true);
-      setTimeout(() => setShowSyncSuccess(false), 4000);
-    } catch (err) {
-      console.error('Error syncing order to cloud:', err);
-    } finally {
-      setIsSavingCloud(false);
-    }
-  };
+  const [sessionCash, setSessionCash] = useState<{
+    cashAmount: number;
+    reference: string;
+  } | null>(null);
 
   // --------------------------------------------------------------------------
-  // TICKET SALE & DISPATCH POP-UP MODAL STATE & LOGIC
+  // TICKET SALE & DISPATCH POP-UP MODAL LOCAL STATE
   // --------------------------------------------------------------------------
   const [saleCategory, setSaleCategory] = useState<'daily' | 'scratch'>('daily');
   const forwardDays = useMemo(() => getForward7Days(), []);
@@ -197,48 +141,36 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
     return { totalPacks, totalTickets, totalBill, projectedCredit, isProjectedExceeded, excess };
   }, [saleTicketCounts, brands, currentSeller]);
 
-  // Live session reconciliation totals aggregated across today's transactions for this seller
+  // --------------------------------------------------------------------------
+  // LIVE RECONCILIATION & REAL-WORLD CREDIT CALCULATION
+  // Seller's previous credit (CREDITS OLD) is appended to current session items
+  // --------------------------------------------------------------------------
   const sessionBreakdown = useMemo(() => {
-    let grossBill = 0;
-    let grossPacks = 0;
-    let grossTickets = 0;
+    const grossBill = sessionSales.reduce((acc, it) => acc + it.subtotal, 0);
+    const grossPacks = sessionSales.reduce((acc, it) => acc + it.packs, 0);
+    const grossTickets = sessionSales.reduce((acc, it) => acc + it.tickets, 0);
 
-    let returnRefund = 0;
-    let returnPacks = 0;
+    const returnRefund = sessionReturnRefund;
+    const returnPacks = sessionReturnPacks;
 
-    let winningOffset = 0;
-    let winningCount = 0;
+    const winningOffset = sessionWinning?.totalAmount || 0;
+    const winningCount = sessionWinning ? 1 : 0;
 
-    let nonWinningReimburse = 0;
-    let nonWinningStubs = 0;
+    const nonWinningReimburse = sessionNonWinning?.totalAmount || 0;
+    const nonWinningStubs = sessionNonWinning ? (parseInt(sessionNonWinning.stubCount) || 0) : 0;
 
-    let cashCollected = 0;
-
-    sellerTransactions.forEach(t => {
-      if (t.actionType?.includes('SALE') || (t.typeLabel && t.typeLabel.includes('Sale')) || t.deltaCredit > 0) {
-        grossBill += t.deltaCredit;
-        grossPacks += t.details?.totalPacks || 0;
-        grossTickets += t.details?.totalTickets || (t.details?.totalPacks ? t.details.totalPacks * 100 : 0);
-      } else if (t.actionType?.includes('RETURN') || (t.typeLabel && t.typeLabel.includes('Return'))) {
-        returnRefund += Math.abs(t.deltaCredit);
-        returnPacks += t.details?.totalPacks || 1;
-      } else if (t.actionType?.includes('WINNING') || (t.typeLabel && t.typeLabel.includes('Winning'))) {
-        winningOffset += Math.abs(t.deltaCredit);
-        winningCount += 1;
-      } else if (t.actionType?.includes('NON_WINNING') || (t.typeLabel && t.typeLabel.includes('Non-Winning'))) {
-        nonWinningReimburse += Math.abs(t.deltaCredit);
-        nonWinningStubs += parseInt(t.details?.stubCount) || 0;
-      } else if (t.actionType?.includes('CASH') || (t.typeLabel && t.typeLabel.includes('Cash'))) {
-        cashCollected += Math.abs(t.deltaCredit);
-      }
-    });
+    const cashCollected = sessionCash?.cashAmount || 0;
 
     const totalOffsets = returnRefund + winningOffset + nonWinningReimburse + cashCollected;
-    const netBill = Math.max(0, grossBill - totalOffsets);
+    const netBill = grossBill - totalOffsets;
 
-    // Starting credit before today's transactions
-    const sortedTxns = [...sellerTransactions].reverse();
-    const prevBalance = sortedTxns.length > 0 ? sortedTxns[0].previousCredit : currentSeller.currentCredit;
+    // CREDITS OLD: True brought-forward debt balance of this retailer from past sessions
+    const prevBalance = currentSeller.currentCredit;
+
+    // POST-ORDER DEBT: Previous balance plus net session bill
+    const postOrderDebt = Math.max(0, prevBalance + netBill);
+    const availableCredit = Math.max(0, currentSeller.creditLimit - postOrderDebt);
+    const percent = Math.min(100, Math.round((postOrderDebt / (currentSeller.creditLimit || 1)) * 100));
 
     return {
       grossBill,
@@ -252,51 +184,17 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
       nonWinningStubs,
       cashCollected,
       totalOffsets,
-      netBill,
-      prevBalance
+      netBill: Math.max(0, netBill),
+      prevBalance,
+      postOrderDebt,
+      availableCredit,
+      percent
     };
-  }, [sellerTransactions, currentSeller]);
+  }, [sessionSales, sessionReturnRefund, sessionReturnPacks, sessionWinning, sessionNonWinning, sessionCash, currentSeller]);
 
-  const handleExecuteSale = () => {
-    if (saleMath.totalPacks <= 0 || saleMath.isProjectedExceeded) return;
-
-    const items = Object.entries(saleTicketCounts)
-      .filter(([_, packs]) => packs > 0)
-      .map(([brandId, packs]) => {
-        const brand = brands.find(b => b.id === brandId)!;
-        const tierPrice = currentSeller.tier === 'Tier A' ? brand.tierAPrice : brand.tierBPrice;
-        const tickets = packs * brand.stockPerPack;
-        return {
-          dateStr: selectedSaleDay.dateStr,
-          brandName: brand.name,
-          packs,
-          tickets,
-          rate: tierPrice,
-          subtotal: tickets * tierPrice
-        };
-      });
-
-    onConfirmSaleDispatch({
-      categoryDesc: saleCategory === 'daily' ? 'Daily Draw Lottery' : 'Instant Scratch Cards',
-      targetDayStr: `${selectedSaleDay.label} (${selectedSaleDay.dateStr})`,
-      items,
-      totalPacks: saleMath.totalPacks,
-      totalTickets: saleMath.totalTickets,
-      totalBill: saleMath.totalBill,
-      dispatchNote: saleDispatchNote
-    });
-
-    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    setCloudSavedAt(timeStr);
-    setShowSyncSuccess(true);
-    setTimeout(() => setShowSyncSuccess(false), 4000);
-
-    // Reset local sale form & close pop-up modal
-    setSaleTicketCounts({});
-    setSaleDispatchNote('');
-    setActiveModal(null);
-  };
-
+  // --------------------------------------------------------------------------
+  // SALE DISPATCH MODAL HANDLERS
+  // --------------------------------------------------------------------------
   const handleUpdatePackQty = (brandId: string, delta: number) => {
     setSaleTicketCounts(prev => {
       const current = prev[brandId] || 0;
@@ -322,6 +220,174 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
     });
   };
 
+  const handleExecuteSale = () => {
+    if (saleMath.totalPacks <= 0 || saleMath.isProjectedExceeded) return;
+
+    const newItems: SalesItem[] = Object.entries(saleTicketCounts)
+      .filter(([_, packs]) => packs > 0)
+      .map(([brandId, packs]) => {
+        const brand = brands.find(b => b.id === brandId)!;
+        const tierPrice = currentSeller.tier === 'Tier A' ? brand.tierAPrice : brand.tierBPrice;
+        const tickets = packs * brand.stockPerPack;
+        return {
+          dateStr: selectedSaleDay.dateStr,
+          brandName: brand.name,
+          packs,
+          tickets,
+          rate: tierPrice,
+          subtotal: tickets * tierPrice
+        };
+      });
+
+    setSessionSales(prev => [...prev, ...newItems]);
+    setSaleTicketCounts({});
+    setSaleDispatchNote('');
+    setActiveModal(null);
+  };
+
+  // --------------------------------------------------------------------------
+  // RESET BILL: RESETS ONLY CURRENT ENTERED VALUES; LEAVES PAST THINGS INTACT
+  // --------------------------------------------------------------------------
+  const handleResetBill = () => {
+    setSessionSales([]);
+    setSessionReturns([]);
+    setSessionReturnPacks(0);
+    setSessionReturnRefund(0);
+    setSessionWinning(null);
+    setSessionNonWinning(null);
+    setSessionCash(null);
+    setSaleTicketCounts({});
+    setSaleDispatchNote('');
+    setCloudSavedAt(null);
+    setShowSyncSuccess(false);
+    setShowResetConfirm(false);
+    if (onResetOrder) {
+      onResetOrder();
+    }
+  };
+
+  // --------------------------------------------------------------------------
+  // CONSTRUCT COMPLETED SLIP OBJECT
+  // --------------------------------------------------------------------------
+  const buildCompletedSlip = (): CompletedSlip => {
+    // Collect any items still un-flushed in the modal
+    let finalSales = [...sessionSales];
+    if (saleMath.totalPacks > 0 && !saleMath.isProjectedExceeded) {
+      const pendingItems = Object.entries(saleTicketCounts)
+        .filter(([_, packs]) => packs > 0)
+        .map(([brandId, packs]) => {
+          const brand = brands.find(b => b.id === brandId)!;
+          const tierPrice = currentSeller.tier === 'Tier A' ? brand.tierAPrice : brand.tierBPrice;
+          const tickets = packs * brand.stockPerPack;
+          return {
+            dateStr: selectedSaleDay.dateStr,
+            brandName: brand.name,
+            packs,
+            tickets,
+            rate: tierPrice,
+            subtotal: tickets * tierPrice
+          };
+        });
+      finalSales = [...finalSales, ...pendingItems];
+    }
+
+    const grossBill = finalSales.reduce((acc, it) => acc + it.subtotal, 0);
+    const returnRefund = sessionReturnRefund;
+    const returnPacks = sessionReturnPacks;
+    const winningOffset = sessionWinning?.totalAmount || 0;
+    const nonWinningReimburse = sessionNonWinning?.totalAmount || 0;
+    const cashCollected = sessionCash?.cashAmount || 0;
+    const totalOffsets = returnRefund + winningOffset + nonWinningReimburse + cashCollected;
+    const netBill = grossBill - totalOffsets;
+
+    const prevBalance = currentSeller.currentCredit;
+    const postOrderDebt = Math.max(0, prevBalance + netBill);
+
+    const now = new Date();
+    const dateFormatted = now.toLocaleDateString() + ' ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    return {
+      id: `RCPT-${Math.floor(1000 + Math.random() * 9000)}`,
+      date: dateFormatted,
+      sellerId: currentSeller.id,
+      sellerName: currentSeller.name,
+      seller: { ...currentSeller, currentCredit: postOrderDebt },
+      assistantId: currentAssistant.id,
+      assistantName: currentAssistant.shortName,
+      assistant: currentAssistant,
+      isConsolidated: true,
+      typeLabel: 'Wholesale Distribution Slip',
+      creditsOld: prevBalance,
+      previousCredit: prevBalance,
+      salesItems: finalSales,
+      returningAmount: returnRefund,
+      returningPacksCount: returnPacks,
+      winningAmount: winningOffset,
+      winningTicketsCount: sessionWinning ? sessionWinning.ticketCount : '',
+      cashPayingAmount: cashCollected,
+      cashRef: sessionCash?.reference || '',
+      nonWinningAmount: nonWinningReimburse,
+      finalCredit: postOrderDebt,
+      newCredit: postOrderDebt
+    };
+  };
+
+  // --------------------------------------------------------------------------
+  // CONFIRM ORDER & SAVE TO CLOUD
+  // --------------------------------------------------------------------------
+  const handleConfirmOrderCloud = async () => {
+    setIsSavingCloud(true);
+    try {
+      const slip = buildCompletedSlip();
+      if (onFinalizeOrder) {
+        await onFinalizeOrder(slip);
+      }
+      
+      // Clear session values after successful finalization
+      setSessionSales([]);
+      setSessionReturns([]);
+      setSessionReturnPacks(0);
+      setSessionReturnRefund(0);
+      setSessionWinning(null);
+      setSessionNonWinning(null);
+      setSessionCash(null);
+      setSaleTicketCounts({});
+
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setCloudSavedAt(timeStr);
+      setShowSyncSuccess(true);
+      setTimeout(() => setShowSyncSuccess(false), 4000);
+    } catch (err) {
+      console.error('Error syncing order to cloud:', err);
+    } finally {
+      setIsSavingCloud(false);
+    }
+  };
+
+  // --------------------------------------------------------------------------
+  // DIRECT PRINT 80MM THERMAL SLIP
+  // --------------------------------------------------------------------------
+  const handleDirectPrint = async () => {
+    const hasItems = sessionSales.length > 0 || sessionReturnRefund > 0 || (sessionWinning?.totalAmount || 0) > 0 || (sessionCash?.cashAmount || 0) > 0;
+    if (hasItems && onFinalizeOrder) {
+      const slip = buildCompletedSlip();
+      await onFinalizeOrder(slip);
+      setSessionSales([]);
+      setSessionReturns([]);
+      setSessionReturnPacks(0);
+      setSessionReturnRefund(0);
+      setSessionWinning(null);
+      setSessionNonWinning(null);
+      setSessionCash(null);
+    } else {
+      onOpenFinalReceipt();
+    }
+
+    setTimeout(() => {
+      window.print();
+    }, 400);
+  };
+
   // Full-page ledger view
   if (showLedgerPage) {
     return (
@@ -336,114 +402,121 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
   }
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-y-auto gap-3 text-[#26201D] animate-in fade-in duration-200">
+    <div className="flex flex-col h-full overflow-hidden text-[#26201D] animate-in fade-in duration-200">
       
       {/* ---------------------------------------------------------------- */}
-      {/* 1. TOP CUSTOMER / SELLER BANNER (MATCHES USER IMAGE EXACTLY)       */}
+      {/* 1. TOP HEADER BAR: RETAILER INFO & FINANCIAL METRICS CARDS       */}
       {/* ---------------------------------------------------------------- */}
-      <div className="rounded-2xl p-3.5 sm:p-4 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3.5 border border-[#E6DDD4] bg-[#FAF8F5]/90 backdrop-blur-md shrink-0">
+      <div className="flex flex-wrap items-center justify-between gap-3 p-3 sm:p-4 rounded-2xl bg-white/90 backdrop-blur-md border border-[#E6DDD4] shadow-xs shrink-0">
         
-        {/* RETAILER INFO */}
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
-            <button
-              onClick={onBackToDirectory}
-              className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#F5EFEB] text-[#26201D] flex items-center gap-1.5 border border-[#E6DDD4] text-xs font-bold transition-all shadow-xs cursor-pointer"
-              title="Back to Retailer Directory"
-            >
-              <ArrowLeft className="w-3.5 h-3.5 text-[#26201D]" />
-              <span>Directory</span>
-            </button>
+        {/* Left: Directory Nav & Retailer Identity */}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onBackToDirectory}
+            className="px-3 py-2 rounded-xl bg-[#FAF8F5] hover:bg-[#F0EAE1] text-[#26201D] border border-[#E6DDD4] text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
+            title="Return to Seller Directory"
+          >
+            <ArrowLeft className="w-4 h-4 text-[#7F7266]" />
+            <span className="hidden sm:inline">Directory</span>
+          </button>
 
-            {/* Small icon on banner to access Recent Ledger in a new page */}
-            <button
-              onClick={() => setShowLedgerPage(true)}
-              className="p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-white hover:bg-[#F5EFEB] text-[#26201D] flex items-center gap-1.5 border border-[#E6DDD4] text-xs font-bold transition-all shadow-xs cursor-pointer"
-              title="Open Recent Ledger & Audit History in full page"
-            >
-              <History className="w-3.5 h-3.5 text-[#D64933]" />
-              <span className="hidden sm:inline">Ledger History</span>
-            </button>
+          <button
+            type="button"
+            onClick={() => setShowLedgerPage(true)}
+            className="px-3 py-2 rounded-xl bg-[#FAF8F5] hover:bg-[#F0EAE1] text-[#26201D] border border-[#E6DDD4] text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
+            title="View Full Ledger History"
+          >
+            <History className="w-4 h-4 text-[#D68A64]" />
+            <span className="hidden sm:inline">Ledger History</span>
+          </button>
 
+          <div className="flex items-center gap-2.5">
             <AvatarDisplay
-              avatarId={currentSeller.avatarId || 'char-06'}
+              avatarId={currentSeller.avatarId}
               name={currentSeller.name}
+              role="seller"
               size="md"
-              showBadge={true}
-              className="shrink-0"
+              className="border border-[#E6DDD4] shrink-0"
             />
-
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-xl sm:text-2xl font-black text-[#26201D] tracking-tight">
-                {currentSeller.name}
-              </h2>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#E6DDD4]/60 text-[#7F7266]">
-                #{currentSeller.id}
-              </span>
-              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#FAF0E9] text-[#D68A64] border border-[#F4DEC9] uppercase tracking-wider">
-                {currentSeller.tier === 'Tier A' ? 'Tier A Wholesale' : 'Tier B Retail'}
-              </span>
-              {currentSeller.isFrozen && (
-                <span className="text-[10px] font-black text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full flex items-center gap-1 border border-rose-200">
-                  <Lock className="w-3 h-3" /> Frozen
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm sm:text-base font-black text-[#26201D] tracking-tight leading-none">
+                  {currentSeller.name}
+                </h2>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-stone-100 text-stone-600 font-mono">
+                  #{currentSeller.id}
                 </span>
-              )}
+                <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#FAF0E9] text-[#D68A64] border border-[#F4DEC9]">
+                  {currentSeller.tier} Wholesale
+                </span>
+              </div>
+              <div className="flex items-center gap-3 text-[11px] text-[#7F7266] mt-1">
+                <span className="flex items-center gap-1 truncate max-w-[140px] sm:max-w-none">
+                  <MapPin className="w-3 h-3 text-[#D68A64] shrink-0" />
+                  {currentSeller.location}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Phone className="w-3 h-3 text-[#D68A64] shrink-0" />
+                  {currentSeller.phone}
+                </span>
+                <span className="hidden md:inline text-stone-400">• Owner: {currentSeller.owner}</span>
+              </div>
             </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2.5 text-[11px] text-[#7F7266] font-medium pl-1">
-            <span className="flex items-center gap-1">
-              <MapPin className="w-3 h-3 text-orange-500 shrink-0" /> {currentSeller.location}
-            </span>
-            <span>•</span>
-            <span className="flex items-center gap-1">
-              <Phone className="w-3 h-3 text-[#9F9184] shrink-0" /> {currentSeller.phone}
-            </span>
-            <span>•</span>
-            <span>Owner: <strong className="text-[#26201D] font-bold">{currentSeller.owner}</strong></span>
           </div>
         </div>
 
-        {/* TOP RIGHT FINANCIAL METRICS (3 DISTINCT CARDS AS IN SCREENSHOT) */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 shrink-0">
-          {/* Card 1: Debt */}
-          <div className="bg-[#FDF2F0] border border-[#F9C9C2] rounded-xl p-2.5 min-w-[145px]">
-            <span className="text-[9px] font-bold text-[#D64933] uppercase tracking-wider block">
-              Current Debt Balance
-            </span>
+        {/* Right: Key Financial Indicators */}
+        <div className="flex items-center gap-2 ml-auto">
+          {/* Current Debt Card */}
+          <div className="bg-[#FDF2F0] border border-[#F9C9C2] rounded-xl p-2.5 min-w-[145px] flex flex-col justify-between">
+            <div className="flex justify-between items-center">
+              <span className="text-[9px] font-bold text-[#D64933] uppercase tracking-wider">
+                Current Debt Balance
+              </span>
+              {sessionBreakdown.postOrderDebt > sessionBreakdown.prevBalance && (
+                <span className="text-[9px] font-black text-[#D64933] bg-rose-100 px-1 rounded">
+                  +DIFF
+                </span>
+              )}
+            </div>
             <div className="text-base sm:text-lg font-black text-[#D64933] tracking-tight font-mono mt-0.5">
-              <span className="text-xs font-bold mr-1">LKR</span>-{formatLKR(currentCredit).replace('LKR', '').trim()}
+              <span className="text-xs font-bold text-[#D64933] mr-1">LKR</span>
+              -{formatLKR(sessionBreakdown.postOrderDebt).replace('LKR', '').trim()}
             </div>
           </div>
 
-          {/* Card 2: Credit Limit */}
-          <div className="bg-[#F0FDF4] border border-[#BBF7D0] rounded-xl p-2.5 min-w-[145px]">
-            <span className="text-[9px] font-bold text-[#16A34A] uppercase tracking-wider block">
-              Assigned Credit Limit
-            </span>
+          {/* Assigned Credit Limit Card */}
+          <div className="bg-[#F0FDF4] border border-[#BBF7D0] rounded-xl p-2.5 min-w-[145px] flex flex-col justify-between">
+            <div className="flex justify-between items-center">
+              <span className="text-[9px] font-bold text-[#16A34A] uppercase tracking-wider">
+                Assigned Credit Limit
+              </span>
+            </div>
             <div className="text-base sm:text-lg font-black text-[#16A34A] tracking-tight font-mono mt-0.5">
-              <span className="text-xs font-bold mr-1">LKR</span>{formatLKR(creditLimit).replace('LKR', '').trim()}
+              <span className="text-xs font-bold text-[#16A34A] mr-1">LKR</span>
+              {formatLKR(currentSeller.creditLimit).replace('LKR', '').trim()}
             </div>
           </div>
 
-          {/* Card 3: Available Room + Progress */}
+          {/* Available Room Card */}
           <div className="bg-white border border-[#E6DDD4] rounded-xl p-2.5 min-w-[145px] flex flex-col justify-between">
             <div className="flex justify-between items-center">
               <span className="text-[9px] font-bold text-[#7F7266] uppercase tracking-wider">
                 Available Room
               </span>
               <span className="text-[9px] font-black text-[#D68A64]">
-                {percent}% USED
+                {sessionBreakdown.percent}% USED
               </span>
             </div>
             <div className="text-base sm:text-lg font-black text-[#26201D] tracking-tight font-mono mt-0.5">
               <span className="text-xs font-bold text-[#7F7266] mr-1">LKR</span>
-              {formatLKR(availableCredit).replace('LKR', '').trim()}
+              {formatLKR(sessionBreakdown.availableCredit).replace('LKR', '').trim()}
             </div>
             <div className="w-full bg-[#E6DDD4] h-1 rounded-full overflow-hidden mt-1">
               <div 
                 className="h-full rounded-full bg-[#D68A64]" 
-                style={{ width: `${percent}%` }}
+                style={{ width: `${sessionBreakdown.percent}%` }}
               />
             </div>
           </div>
@@ -454,9 +527,9 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
       {/* ---------------------------------------------------------------- */}
       {/* 2. ORDER BREAKDOWN & ACTION BUTTONS LIST (CENTERED & FOCUSED)    */}
       {/* ---------------------------------------------------------------- */}
-      <div className="flex-1 min-h-0 flex flex-col items-center justify-start py-2">
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-start py-2 overflow-y-auto">
         
-        {/* THE ORDERING ELEMENTS LIST CARD (EXACTLY LIKE USER IMAGE) */}
+        {/* THE ORDERING ELEMENTS LIST CARD */}
         <div className="max-w-2xl w-full space-y-3">
           
           <div className="rounded-3xl border border-[#E6DDD4] bg-[#FAF8F5]/90 backdrop-blur-md p-4 sm:p-5 shadow-xs space-y-3.5">
@@ -469,10 +542,10 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
                 </div>
                 <div>
                   <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-stone-900 block leading-tight">
-                    Order & Bill Breakdown
+                    Full Order & Bill Breakdown
                   </h3>
                   <span className="text-[11px] text-[#7F7266] font-medium">
-                    Session Breakdown
+                    Live Session Reconciliation
                   </span>
                 </div>
               </div>
@@ -482,7 +555,7 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
                   type="button"
                   onClick={() => setShowResetConfirm(true)}
                   className="px-2.5 py-1 rounded-xl bg-white hover:bg-rose-50 text-rose-600 hover:text-rose-700 border border-rose-200 text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
-                  title="Reset current bill and clear all items"
+                  title="Reset current bill without touching customer's past balance"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   <span>Reset Bill</span>
@@ -494,11 +567,11 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
               </div>
             </div>
 
-            {/* Big Prominent Full Bill Amount Highlight */}
+            {/* Prominent Full Bill Amount Highlight */}
             <div className="p-3.5 rounded-2xl bg-white border border-[#E6DDD4] space-y-1">
               <div className="flex justify-between items-baseline">
                 <span className="text-xs font-black uppercase tracking-wider text-stone-600">
-                  Full Bill Amount (Net):
+                  Full Amount (Net):
                 </span>
                 <div className="text-2xl sm:text-3xl font-black text-stone-900 font-mono tracking-tight">
                   <span className="text-xs font-bold text-stone-500 mr-1">LKR</span>
@@ -511,10 +584,10 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
               </div>
             </div>
 
-            {/* ALL ORDERING ELEMENTS LIST (THE 5 ACTION BUTTONS) */}
+            {/* ALL ORDERING ELEMENTS LIST (5 ACTION BUTTONS) */}
             <div className="space-y-2 text-xs">
               <span className="text-[10px] font-black uppercase tracking-wider text-stone-400 block pl-0.5">
-                Order Elements
+                All Ordering Elements
               </span>
 
               {/* 1. Gross Dispatch */}
@@ -538,7 +611,7 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
                     +LKR {formatLKR(sessionBreakdown.grossBill).replace('LKR', '').trim()}
                   </span>
                   <span className="text-[10px] font-bold text-[#D64933] group-hover:underline">
-                    {sessionBreakdown.grossPacks > 0 ? '3.1 Sale ›' : '+ Add ›'}
+                    {sessionBreakdown.grossPacks > 0 ? 'Edit Sale ›' : '+ Add ›'}
                   </span>
                 </div>
               </div>
@@ -581,7 +654,7 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
                   <div>
                     <span className="font-black text-stone-900 block leading-tight">3. Winning Tickets Offset</span>
                     <span className="text-[10px] text-stone-500">
-                      {sessionBreakdown.winningCount > 0 ? `${sessionBreakdown.winningCount} vouchers claimed` : '0 vouchers claimed'}
+                      {sessionBreakdown.winningCount > 0 ? 'Vouchers claimed' : '0 vouchers claimed'}
                     </span>
                   </div>
                 </div>
@@ -633,7 +706,7 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
                   <div>
                     <span className="font-black text-stone-900 block leading-tight">5. Cash Payment</span>
                     <span className="text-[10px] text-stone-500">
-                      {sessionBreakdown.cashCollected > 0 ? 'Cash settlement logged' : 'No cash tendered'}
+                      {sessionBreakdown.cashCollected > 0 ? 'Cash settlement logged' : 'No cash rendered'}
                     </span>
                   </div>
                 </div>
@@ -649,7 +722,7 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
 
             </div>
 
-            {/* Debt Summary Impact */}
+            {/* Debt Summary Impact: Seller's credit value is appended to current session */}
             <div className="pt-2 border-t border-[#E6DDD4] space-y-1.5">
               <div className="flex justify-between items-center text-xs">
                 <span className="text-[#7F7266] font-medium">Previous Balance:</span>
@@ -660,7 +733,7 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
               <div className="flex justify-between items-center text-xs">
                 <span className="font-black text-stone-900">Post-Order Debt:</span>
                 <span className="font-black text-base text-[#D64933] font-mono">
-                  LKR {formatLKR(currentCredit).replace('LKR', '').trim()}
+                  LKR {formatLKR(sessionBreakdown.postOrderDebt).replace('LKR', '').trim()}
                 </span>
               </div>
             </div>
@@ -707,7 +780,7 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
               )}
             </button>
 
-            {/* Row of Secondary Actions: Print 80mm Slip, Send Message to Phone */}
+            {/* Secondary Actions: Print 80mm Slip, Send Message to Phone */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {/* Print 80mm Dispatch Slip Button */}
               <button
@@ -720,15 +793,15 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
                 <span>Print 80mm Slip</span>
               </button>
 
-              {/* Send Bill to Customer Phone (WhatsApp / SMS) */}
+              {/* Send Bill to Customer Phone (SMS/WhatsApp) */}
               <button
                 type="button"
                 onClick={() => setShowMessageModal(true)}
-                className="py-3 px-3 rounded-2xl bg-white hover:bg-[#F0FDF4] text-emerald-700 font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 border border-emerald-200 shadow-xs transition-all cursor-pointer active:scale-[0.99] min-h-[46px]"
-                title="Send bill via WhatsApp or SMS to customer mobile"
+                className="py-3 px-3 rounded-2xl bg-white hover:bg-[#F5EFEB] text-[#26201D] font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 border border-[#E6DDD4] shadow-xs transition-all cursor-pointer active:scale-[0.99] min-h-[46px]"
+                title="Send Bill Summary via WhatsApp or SMS"
               >
-                <Smartphone className="w-4 h-4 text-emerald-600" />
-                <span>Message to Phone</span>
+                <Smartphone className="w-4 h-4 text-[#D68A64]" />
+                <span>Send Bill to Phone</span>
               </button>
             </div>
           </div>
@@ -738,25 +811,29 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
       </div>
 
       {/* ==================================================================== */}
-      {/* RESET ORDER CONFIRMATION MODAL                                       */}
+      {/* 3. RESET BILL CONFIRMATION MODAL                                     */}
       {/* ==================================================================== */}
       {showResetConfirm && (
         <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-stone-200 space-y-4 animate-in zoom-in-95 duration-200">
-            <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center">
-              <RotateCcw className="w-6 h-6 text-rose-600" />
+          <div className="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl border border-stone-200 space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto border border-rose-100">
+              <RotateCcw className="w-6 h-6" />
             </div>
-            <div className="space-y-1">
-              <h3 className="text-lg font-black text-stone-900">Reset Current Order & Bill?</h3>
-              <p className="text-xs text-stone-600 leading-relaxed">
-                This will clear all items (Gross Dispatches, Returns, Winnings, and Cash) for <strong className="text-stone-900">{currentSeller.name}</strong> and reset the bill to zero.
+            
+            <div className="text-center space-y-1">
+              <h4 className="text-base font-black text-stone-900">
+                Reset Current Bill?
+              </h4>
+              <p className="text-xs text-stone-500 leading-relaxed">
+                This will clear newly entered items for this visit. Customer's past transactions and previous debt balance will not be affected.
               </p>
             </div>
-            <div className="flex items-center justify-end gap-2.5 pt-2">
+
+            <div className="grid grid-cols-2 gap-2 pt-1">
               <button
                 type="button"
                 onClick={() => setShowResetConfirm(false)}
-                className="px-4 py-2.5 rounded-full border border-stone-300 hover:bg-stone-100 text-stone-700 text-xs font-bold transition-colors cursor-pointer"
+                className="px-4 py-2.5 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold transition-colors cursor-pointer"
               >
                 Keep Current Bill
               </button>
@@ -793,8 +870,8 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
             cashCollected: sessionBreakdown.cashCollected,
             netBill: sessionBreakdown.netBill,
             prevBalance: sessionBreakdown.prevBalance,
-            postOrderDebt: currentCredit,
-            availableCredit: availableCredit
+            postOrderDebt: sessionBreakdown.postOrderDebt,
+            availableCredit: sessionBreakdown.availableCredit
           }}
         />
       )}
@@ -808,7 +885,6 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
             
             {/* Modal Header with Dark Lottery Balls Background & Blur */}
             <div className="relative p-4 sm:p-5 text-white flex items-center justify-between shrink-0 overflow-hidden rounded-t-3xl border-b border-white/10">
-              {/* Lottery Balls Background Image with Blur */}
               <div 
                 className="absolute inset-0 bg-cover bg-center pointer-events-none scale-105"
                 style={{
@@ -816,10 +892,8 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
                   filter: 'blur(3px)'
                 }}
               />
-              {/* Dark Overlay for Deep Contrast */}
               <div className="absolute inset-0 bg-stone-950/80 backdrop-blur-xs pointer-events-none" />
 
-              {/* Foreground Content */}
               <div className="relative z-10 flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-white/10 border border-white/15 text-[#D68A64] flex items-center justify-center font-bold">
                   <ShoppingBag className="w-5 h-5 text-[#D68A64]" />
@@ -1035,7 +1109,7 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
                   </div>
                   <div className="flex items-center gap-2 text-xs">
                     <span className="text-stone-500 font-medium">Debt Impact:</span>
-                    <span className="font-mono">{formatLKR(currentCredit)}</span>
+                    <span className="font-mono">{formatLKR(currentSeller.currentCredit)}</span>
                     <span>→</span>
                     <span className={`font-mono font-bold ${saleMath.isProjectedExceeded ? 'text-rose-600' : 'text-stone-900'}`}>
                       {formatLKR(saleMath.projectedCredit)}
@@ -1081,8 +1155,8 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
                       : 'bg-stone-300 text-stone-500 cursor-not-allowed shadow-none'
                   }`}
                 >
-                  <Cloud className="w-4 h-4" />
-                  <span>Confirm Order & Save to Cloud</span>
+                  <Check className="w-4 h-4" />
+                  <span>Add to Order Bill</span>
                 </button>
               </div>
 
@@ -1101,7 +1175,9 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
           brands={brands}
           onClose={() => setActiveModal(null)}
           onConfirm={(data) => {
-            onConfirmReturn(data);
+            setSessionReturns(data.returnItems);
+            setSessionReturnPacks(data.totalPacks);
+            setSessionReturnRefund(data.totalRefund);
             setActiveModal(null);
           }}
         />
@@ -1115,7 +1191,12 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
           currentSeller={currentSeller}
           onClose={() => setActiveModal(null)}
           onConfirm={(data) => {
-            onConfirmWinning(data);
+            setSessionWinning({
+              totalAmount: data.totalWinningOffset,
+              envelopeNo: data.envelopeNo,
+              ticketCount: data.ticketCount,
+              breakdown: data.breakdown
+            });
             setActiveModal(null);
           }}
         />
@@ -1130,7 +1211,13 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
           brands={brands}
           onClose={() => setActiveModal(null)}
           onConfirm={(data) => {
-            onConfirmNonWinning(data);
+            setSessionNonWinning({
+              brandName: data.brandName,
+              stubCount: data.stubCount,
+              ratePerStub: data.ratePerStub,
+              schemeRef: data.schemeRef,
+              totalAmount: data.totalReimbursement
+            });
             setActiveModal(null);
           }}
         />
@@ -1145,7 +1232,10 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
           currentAssistant={currentAssistant}
           onClose={() => setActiveModal(null)}
           onConfirm={(data) => {
-            onConfirmCash(data);
+            setSessionCash({
+              cashAmount: data.cashAmount,
+              reference: data.reference
+            });
             setActiveModal(null);
           }}
         />

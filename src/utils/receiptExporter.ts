@@ -8,18 +8,53 @@ export interface ShareResult {
 }
 
 /**
- * Capture an element as a high-resolution canvas
+ * Capture an element as a high-resolution canvas.
+ * Uses an off-screen clone with unconstrained height so that long continuous receipts
+ * are NEVER cut off by modal overflow or viewport scrolling.
  */
 export async function captureReceiptCanvas(element: HTMLElement): Promise<HTMLCanvasElement | null> {
   try {
-    const canvas = await html2canvas(element, {
-      scale: 3, // Ultra-sharp 300 DPI thermal print quality
+    // 1. Create an off-screen clone without scroll/height constraints
+    const clone = element.cloneNode(true) as HTMLElement;
+    clone.id = 'printable-receipt-render-clone';
+    clone.style.position = 'fixed';
+    clone.style.left = '-9999px';
+    clone.style.top = '0';
+    clone.style.width = '340px';
+    clone.style.maxWidth = '340px';
+    clone.style.minHeight = 'auto';
+    clone.style.height = 'auto';
+    clone.style.maxHeight = 'none';
+    clone.style.overflow = 'visible';
+    clone.style.boxShadow = 'none';
+    clone.style.margin = '0';
+    clone.style.padding = '16px 20px';
+    clone.style.backgroundColor = '#ffffff';
+    clone.style.zIndex = '-9999';
+
+    document.body.appendChild(clone);
+
+    // Allow browser a microtask to compute full scroll layout and fonts
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    const fullHeight = Math.max(clone.scrollHeight, clone.offsetHeight, 600);
+    const fullWidth = clone.scrollWidth || 340;
+
+    const canvas = await html2canvas(clone, {
+      scale: 3, // Ultra-sharp 300 DPI thermal roll quality
       useCORS: true,
       backgroundColor: '#ffffff',
       logging: false,
-      windowWidth: element.scrollWidth,
-      windowHeight: element.scrollHeight
+      width: fullWidth,
+      height: fullHeight,
+      windowWidth: fullWidth,
+      windowHeight: fullHeight,
+      scrollX: 0,
+      scrollY: 0
     });
+
+    // Remove the temporary clone
+    document.body.removeChild(clone);
     return canvas;
   } catch (err) {
     console.error('Failed to capture receipt canvas:', err);
@@ -49,7 +84,7 @@ export async function captureReceiptAsDataURL(element: HTMLElement): Promise<str
 }
 
 /**
- * Download the real receipt as an image file (.png) with long continuous dimensions
+ * Download the real receipt as an image file (.png) with full unbroken continuous dimensions
  */
 export async function downloadReceiptImage(element: HTMLElement, filename = 'receipt-slip.png'): Promise<boolean> {
   const blob = await captureReceiptAsBlob(element);
@@ -67,7 +102,8 @@ export async function downloadReceiptImage(element: HTMLElement, filename = 'rec
 }
 
 /**
- * Generate a real 80mm continuous roll PDF Blob with exact thermal dimensions
+ * Generate a real 80mm continuous roll PDF Blob with exact thermal dimensions.
+ * The PDF is a single uninterrupted roll matching the exact full height of the receipt.
  */
 export async function generateReceiptPDFBlob(element: HTMLElement): Promise<Blob | null> {
   const canvas = await captureReceiptCanvas(element);
@@ -77,14 +113,14 @@ export async function generateReceiptPDFBlob(element: HTMLElement): Promise<Blob
   
   // Real 80mm thermal paper width
   const pdfWidthMm = 80;
-  // Compute exact proportional height in mm based on rendered content
-  const pdfHeightMm = Math.max(100, (canvas.height / canvas.width) * pdfWidthMm);
+  // Compute exact proportional height in mm based on full rendered content
+  const pdfHeightMm = (canvas.height / canvas.width) * pdfWidthMm;
 
-  // Custom single-page continuous roll format
+  // Single-page continuous roll format matching exact content height
   const pdf = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
-    format: [pdfWidthMm, pdfHeightMm],
+    format: [pdfWidthMm, Math.max(120, pdfHeightMm)],
     compress: true
   });
 
@@ -112,8 +148,8 @@ export async function downloadReceiptPDF(element: HTMLElement, filename = 'recei
 
 /**
  * Share the real receipt directly via WhatsApp as an Image (PNG) or PDF
- * - Mobile / Tablet: native Web Share API directly attaches the real slip file
- * - Desktop: automatically downloads the real slip file and opens WhatsApp chat with text summary
+ * - Mobile / Tablet: native Web Share API directly attaches the real full slip file
+ * - Desktop: automatically downloads the real full slip file and opens WhatsApp chat with text summary
  */
 export async function shareReceiptToWhatsApp(
   element: HTMLElement,
@@ -167,7 +203,7 @@ export async function shareReceiptToWhatsApp(
     }
 
     // Fallback for browsers that do not support direct file attachments in Web Share API:
-    // 1. Download the real dimension slip file
+    // 1. Download the real full dimension slip file
     const url = URL.createObjectURL(fileBlob);
     const link = document.createElement('a');
     link.href = url;
