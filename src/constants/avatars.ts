@@ -117,3 +117,4 @@ export function getAvatarById(avatarId?: string): CharacterAvatar {
   const found = CHARACTER_AVATARS.find(a => a.id === avatarId);
   return found || CHARACTER_AVATARS[0];
 }
+

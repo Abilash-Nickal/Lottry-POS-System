@@ -22,7 +22,10 @@ import {
   ChevronRight, 
   Sparkles, 
   ShieldCheck,
-  CreditCard
+  CreditCard,
+  Cloud,
+  CheckCircle2,
+  Loader2
 } from 'lucide-react';
 import { Seller, Assistant, Transaction, LotteryBrand, ForwardDay } from '../types';
 import { formatLKR, getForward7Days } from '../utils/formatters';
@@ -32,6 +35,7 @@ import { ReturnModal } from './ActionModals/ReturnModal';
 import { WinningModal } from './ActionModals/WinningModal';
 import { NonWinningModal } from './ActionModals/NonWinningModal';
 import { CashModal } from './ActionModals/CashModal';
+import { dbUpsertSeller } from '../lib/databaseService';
 
 interface SellerWorkspaceProps {
   currentSeller: Seller;
@@ -110,6 +114,38 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
   const creditLimit = currentSeller.creditLimit;
   const availableCredit = Math.max(0, creditLimit - currentCredit);
   const percent = Math.min(100, Math.round((currentCredit / (creditLimit || 1)) * 100));
+
+  // Cloud sync & printing state
+  const [isSavingCloud, setIsSavingCloud] = useState(false);
+  const [cloudSavedAt, setCloudSavedAt] = useState<string | null>(null);
+  const [showSyncSuccess, setShowSyncSuccess] = useState(false);
+
+  const handleDirectPrint = () => {
+    onOpenFinalReceipt();
+    // Allow modal to render then trigger print
+    setTimeout(() => {
+      window.print();
+    }, 350);
+  };
+
+  const handleConfirmOrderCloud = async () => {
+    setIsSavingCloud(true);
+    try {
+      if (saleMath.totalPacks > 0 && !saleMath.isProjectedExceeded) {
+        handleExecuteSale();
+      }
+      // Save current seller state to database & Google Sheets
+      await dbUpsertSeller(currentSeller);
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setCloudSavedAt(timeStr);
+      setShowSyncSuccess(true);
+      setTimeout(() => setShowSyncSuccess(false), 4000);
+    } catch (err) {
+      console.error('Error syncing order to cloud:', err);
+    } finally {
+      setIsSavingCloud(false);
+    }
+  };
 
   // --------------------------------------------------------------------------
   // TICKET SALE & DISPATCH POP-UP MODAL STATE & LOGIC
@@ -238,6 +274,11 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
       totalBill: saleMath.totalBill,
       dispatchNote: saleDispatchNote
     });
+
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    setCloudSavedAt(timeStr);
+    setShowSyncSuccess(true);
+    setTimeout(() => setShowSyncSuccess(false), 4000);
 
     // Reset local sale form & close pop-up modal
     setSaleTicketCounts({});
@@ -406,6 +447,72 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
         
         {/* THE ORDERING ELEMENTS LIST CARD (EXACTLY LIKE USER IMAGE) */}
         <div className="max-w-xl w-full space-y-3">
+
+          {/* TOP ACTIONS: CONFIRM ORDER TO CLOUD & PRINT DISPATCH SLIP (MATCHES USER IMAGE) */}
+          <div className="space-y-2 mb-1">
+            <div className="flex items-center justify-between px-1 text-xs font-bold">
+              <span className="text-[#16A34A] flex items-center gap-1.5 font-mono text-[11px]">
+                <span className="w-2 h-2 rounded-full bg-[#16A34A] animate-pulse" />
+                Remaining room: LKR {formatLKR(availableCredit).replace('LKR', '').trim()}
+              </span>
+              {cloudSavedAt && (
+                <span className="text-[#0284C7] flex items-center gap-1 text-[11px] font-mono animate-in fade-in">
+                  <Cloud className="w-3.5 h-3.5 text-[#0284C7]" />
+                  Cloud Synced: {cloudSavedAt}
+                </span>
+              )}
+            </div>
+
+            {/* Confirm Order & Save to Cloud Button */}
+            <button
+              type="button"
+              disabled={isSavingCloud || currentSeller.isFrozen}
+              onClick={handleConfirmOrderCloud}
+              className={`w-full py-3.5 px-5 rounded-2xl font-black text-sm sm:text-base flex items-center justify-center gap-2.5 shadow-md transition-all cursor-pointer min-h-[48px] ${
+                showSyncSuccess
+                  ? 'bg-[#16A34A] text-white shadow-emerald-600/30'
+                  : 'bg-[#D64933] hover:bg-[#bd3e2a] text-white shadow-[#D64933]/25 active:scale-[0.99]'
+              } ${isSavingCloud || currentSeller.isFrozen ? 'opacity-80 cursor-not-allowed' : ''}`}
+            >
+              {isSavingCloud ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  <span>Saving Order to Cloud...</span>
+                </>
+              ) : showSyncSuccess ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4 text-white" />
+                  <span>Order Confirmed & Cloud Saved!</span>
+                </>
+              ) : (
+                <>
+                  <Cloud className="w-4 h-4 text-white" />
+                  <span>Confirm Order & Save to Cloud</span>
+                </>
+              )}
+            </button>
+
+            {/* Print 80mm Dispatch Slip Button */}
+            <button
+              type="button"
+              onClick={handleDirectPrint}
+              className="w-full py-3 px-5 rounded-2xl bg-white hover:bg-[#F5EFEB] text-[#26201D] font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2.5 border border-[#E6DDD4] shadow-xs transition-all cursor-pointer active:scale-[0.99]"
+            >
+              <Printer className="w-4 h-4 text-[#D64933]" />
+              <span>Print 80mm Dispatch Slip</span>
+            </button>
+
+            {/* Cancel Dispatch link */}
+            <div className="text-center pt-0.5">
+              <button
+                type="button"
+                onClick={onBackToDirectory}
+                className="text-[11px] font-bold text-stone-400 hover:text-stone-700 hover:underline cursor-pointer transition-colors"
+              >
+                Cancel Dispatch / Back to Directory
+              </button>
+            </div>
+          </div>
           
           <div className="rounded-3xl border border-[#E6DDD4] bg-[#FAF8F5] p-4 sm:p-5 shadow-xs space-y-3.5">
             
@@ -606,8 +713,8 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
           {/* Big Prominent Final Slip Button (Matching Image) */}
           <button
             type="button"
-            onClick={onOpenFinalReceipt}
-            className="w-full py-3.5 px-5 rounded-2xl bg-[#D64933] hover:bg-[#bd3e2a] text-white font-extrabold text-sm sm:text-base flex items-center justify-center gap-2.5 shadow-md shadow-[#D64933]/25 transition-all cursor-pointer min-h-[48px]"
+            onClick={handleDirectPrint}
+            className="w-full py-3.5 px-5 rounded-2xl bg-[#D64933] hover:bg-[#bd3e2a] text-white font-extrabold text-sm sm:text-base flex items-center justify-center gap-2.5 shadow-md shadow-[#D64933]/25 transition-all cursor-pointer min-h-[48px] active:scale-[0.99]"
           >
             <Printer className="w-4 h-4 text-white" />
             <span>Preview and Print Final Slip</span>
@@ -883,12 +990,12 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
                   onClick={handleExecuteSale}
                   className={`px-6 py-2.5 rounded-full text-xs font-black shadow-md flex items-center gap-2 transition-all cursor-pointer ${
                     saleMath.totalPacks > 0 && !saleMath.isProjectedExceeded
-                      ? 'bg-[#D64933] hover:bg-[#bd3e2a] text-white shadow-orange-500/20'
+                      ? 'bg-[#D64933] hover:bg-[#bd3e2a] text-white shadow-orange-500/20 active:scale-95'
                       : 'bg-stone-300 text-stone-500 cursor-not-allowed shadow-none'
                   }`}
                 >
-                  <Check className="w-4 h-4" />
-                  <span>Confirm & Issue Packs</span>
+                  <Cloud className="w-4 h-4" />
+                  <span>Confirm Order & Save to Cloud</span>
                 </button>
               </div>
 

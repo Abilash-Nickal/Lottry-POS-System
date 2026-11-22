@@ -44,3 +44,4 @@ for meta in avatars_meta:
     print(f"Saved: {filename} - {meta['name']}")
 
 print('SUCCESS: All 14 character avatars extracted and saved to public/avatars!')
+
