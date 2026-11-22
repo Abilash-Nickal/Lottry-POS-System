@@ -57,3 +57,30 @@ Every button directly impacts the seller's credit ledger according to these exac
 
 ## 🖨️ Bluetooth Thermal Printing
 All operations generate a printable thermal slip (`#printable-receipt`) formatted for 80mm thermal receipt printers with `window.print()` integration.
+
+---
+
+## 📊 Database & Cloud Storage (Google Sheets & Excel)
+
+The system now runs on a **resilient, zero-pause hybrid architecture** that replaces Supabase:
+
+1. **Google Sheets Cloud Database (Never Pauses, 100% Free Forever)**:
+   - Supabase free tier pauses after 7 days of inactivity. Google Sheets **never pauses or goes to sleep**.
+   - Syncs across field tablets, phones, and PCs in real-time.
+   - The business owner can open the spreadsheet on their phone anytime to view sales and debts.
+   - Powered by a simple Google Apps Script (`google-sheets-backend.js`).
+
+2. **Microsoft Excel Direct Export**:
+   - One-click export for the entire **Audit Ledger & Transactions** to `.csv` / `.xlsx`.
+   - One-click export for the **Retailers Directory & Outstanding Balances**.
+
+3. **Offline-First Local Storage**:
+   - Zero-latency optimistic UI with automatic local storage backup.
+   - If an assistant is on a remote road with no cellular coverage, transactions still succeed without freezing.
+
+### 🚀 2-Minute Google Sheets Setup:
+1. Open [Google Sheets](https://sheets.new) and name it **Lottery POS Database**.
+2. Click **Extensions > Apps Script**.
+3. Copy all contents of [google-sheets-backend.js](./google-sheets-backend.js) and paste it into the editor.
+4. Click **Deploy > New deployment > Web app** (Execute as: *Me*, Who has access: *Anyone*).
+5. Copy the generated Web App URL and paste it into the POS App under **Admin Dashboard > Database & Cloud Sync** (or into `.env` as `VITE_GOOGLE_SHEETS_URL`).

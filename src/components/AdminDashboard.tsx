@@ -26,7 +26,13 @@ import {
   History,
   ShoppingBag,
   Receipt,
-  Package
+  Package,
+  Database,
+  Download,
+  FileSpreadsheet,
+  RefreshCw,
+  CheckCircle2,
+  Globe
 } from 'lucide-react';
 import { LotteryBrand, Assistant, Seller, Transaction } from '../types';
 import { formatLKR } from '../utils/formatters';
@@ -34,8 +40,12 @@ import {
   dbUpsertSeller, 
   dbDeleteSeller, 
   dbUpsertAssistant, 
-  dbUpsertBrand 
-} from '../lib/supabaseService';
+  dbUpsertBrand,
+  getGoogleSheetsUrl,
+  setGoogleSheetsUrl,
+  exportTransactionsToExcel,
+  exportSellersToExcel
+} from '../lib/databaseService';
 
 interface AdminDashboardProps {
   brands: LotteryBrand[];
@@ -114,6 +124,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   // Seller Last 10 Purchases History Modal State
   const [historySeller, setHistorySeller] = useState<Seller | null>(null);
   const [historyFilter, setHistoryFilter] = useState<'purchases' | 'all'>('purchases');
+
+  // Database & Google Sheets Configuration Modal State
+  const [showDatabaseModal, setShowDatabaseModal] = useState(false);
+  const [sheetsUrlInput, setSheetsUrlInput] = useState(() => getGoogleSheetsUrl());
+  const [isTestingUrl, setIsTestingUrl] = useState(false);
+  const [copiedScript, setCopiedScript] = useState(false);
 
   // Generator & Selector for individual seller's last 10 purchase full history
   const displayedPurchases = useMemo(() => {
@@ -525,7 +541,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
+          <button
+            onClick={() => setShowDatabaseModal(true)}
+            className={`px-4 py-2.5 rounded-full border text-xs sm:text-sm font-bold flex items-center gap-2 shadow-xs transition-colors cursor-pointer ${
+              sheetsUrlInput 
+                ? 'bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100' 
+                : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100'
+            }`}
+            title="Configure Google Sheets Cloud Database or Excel Backup"
+          >
+            <Database className={`w-4 h-4 ${sheetsUrlInput ? 'text-emerald-600' : 'text-stone-500'}`} />
+            <span>{sheetsUrlInput ? 'Google Sheet Synced' : 'Local / Excel Mode'}</span>
+          </button>
+
           <button
             onClick={onSwitchToPOSMode}
             className="px-5 py-2.5 rounded-full bg-white hover:bg-orange-50 border border-orange-200 text-orange-600 text-xs sm:text-sm font-bold flex items-center gap-2 shadow-xs transition-colors cursor-pointer"
@@ -647,13 +676,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </p>
             </div>
 
-            <button
-              onClick={() => setShowAddSellerModal(true)}
-              className="px-5 py-2.5 rounded-full bg-[#9E2A1E] hover:bg-[#852318] text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-sm shadow-[#9E2A1E]/20 transition-all cursor-pointer shrink-0"
-            >
-              <Plus className="w-4 h-4 stroke-[3]" />
-              <span>Add New Seller</span>
-            </button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => exportSellersToExcel(sellers)}
+                className="px-4 py-2.5 rounded-full bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 text-xs sm:text-sm font-bold flex items-center gap-2 shadow-xs transition-colors cursor-pointer shrink-0"
+                title="Download Retailers Directory to Excel (.csv)"
+              >
+                <Download className="w-4 h-4 text-emerald-600" />
+                <span>Export to Excel</span>
+              </button>
+
+              <button
+                onClick={() => setShowAddSellerModal(true)}
+                className="px-5 py-2.5 rounded-full bg-[#9E2A1E] hover:bg-[#852318] text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-sm shadow-[#9E2A1E]/20 transition-all cursor-pointer shrink-0"
+              >
+                <Plus className="w-4 h-4 stroke-[3]" />
+                <span>Add New Seller</span>
+              </button>
+            </div>
           </div>
 
           {/* Unified Search & Filters Bar — Same as Assistant's Directory */}
@@ -1118,11 +1158,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {/* ==================================================================== */}
       {adminTab === 'ledger' && (
         <div className="bg-white border border-stone-200/80 rounded-3xl p-6 shadow-sm space-y-4">
-          <div>
-            <h3 className="text-lg font-bold text-stone-900">Global Audit Trail & Ledger</h3>
-            <p className="text-xs text-stone-500">
-              Comprehensive log of every dispatch, return, winning claim, drawback, and cash collection
-            </p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-bold text-stone-900">Global Audit Trail & Ledger</h3>
+              <p className="text-xs text-stone-500">
+                Comprehensive log of every dispatch, return, winning claim, drawback, and cash collection
+              </p>
+            </div>
+            <button
+              onClick={() => exportTransactionsToExcel(transactions)}
+              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-2 shadow-sm transition-all cursor-pointer self-start sm:self-auto"
+              title="Download full transaction ledger as an Excel-compatible CSV"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>Export to Excel (.csv)</span>
+            </button>
           </div>
 
           <div className="overflow-x-auto">
@@ -2112,6 +2162,182 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 className="px-5 py-2 rounded-full bg-stone-900 hover:bg-black text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
               >
                 Close History
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* DATABASE & GOOGLE SHEETS SETTINGS MODAL                              */}
+      {/* ==================================================================== */}
+      {showDatabaseModal && (
+        <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-xl w-full shadow-2xl border border-stone-200 overflow-hidden my-8">
+            
+            {/* Header */}
+            <div className="p-6 bg-gradient-to-r from-stone-900 to-stone-800 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                  <Database className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black tracking-tight">Database & Cloud Sync</h3>
+                  <p className="text-xs text-stone-300">Google Sheets 24/7 Cloud or Local Excel Storage</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDatabaseModal(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+
+              {/* Status Banner */}
+              <div className={`p-4 rounded-2xl border flex items-start gap-3.5 ${
+                sheetsUrlInput 
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-900' 
+                  : 'bg-amber-50 border-amber-200 text-amber-900'
+              }`}>
+                {sheetsUrlInput ? (
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                ) : (
+                  <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                )}
+                <div className="text-xs space-y-1">
+                  <p className="font-bold">
+                    {sheetsUrlInput ? 'Google Sheets Cloud Active' : 'Offline / Local Database Active'}
+                  </p>
+                  <p className="text-stone-600 leading-relaxed">
+                    {sheetsUrlInput 
+                      ? 'Your POS automatically syncs all dispatches, debt balances, and cash collections to Google Sheets in real-time. Zero pausing, 100% free forever.' 
+                      : 'All records are saved securely inside your browser local storage. Your data never pauses or expires. Connect a Google Sheet below to sync across multiple phones/devices.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Google Sheets URL Configuration */}
+              <div className="space-y-3">
+                <label className="text-xs font-bold text-stone-700 block uppercase tracking-wider">
+                  Google Sheets Web App URL:
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="url"
+                    value={sheetsUrlInput}
+                    onChange={(e) => setSheetsUrlInput(e.target.value)}
+                    placeholder="https://script.google.com/macros/s/AKfycb.../exec"
+                    className="w-full text-xs font-mono px-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-stone-50"
+                  />
+                </div>
+                <div className="flex items-center gap-2 flex-wrap pt-1">
+                  <button
+                    type="button"
+                    disabled={isTestingUrl}
+                    onClick={async () => {
+                      if (!sheetsUrlInput || !sheetsUrlInput.trim().startsWith('http')) {
+                        if (showToast) showToast('Please enter a valid Google Web App URL', 'error');
+                        return;
+                      }
+                      setIsTestingUrl(true);
+                      setGoogleSheetsUrl(sheetsUrlInput.trim());
+                      try {
+                        const testUrl = `${sheetsUrlInput.trim()}${sheetsUrlInput.includes('?') ? '&' : '?'}action=fetchAll`;
+                        const res = await fetch(testUrl);
+                        const json = await res.json();
+                        if (json && json.success) {
+                          if (showToast) showToast('Connected to Google Sheets successfully!', 'success');
+                        } else {
+                          if (showToast) showToast('URL saved, but sheet returned an unexpected response', 'info');
+                        }
+                      } catch (e) {
+                        if (showToast) showToast('URL saved! Local fallback is active until sheet responds', 'info');
+                      } finally {
+                        setIsTestingUrl(false);
+                      }
+                    }}
+                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-2 shadow-xs transition-colors cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isTestingUrl ? 'animate-spin' : ''}`} />
+                    <span>Save & Connect</span>
+                  </button>
+
+                  {sheetsUrlInput && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setGoogleSheetsUrl('');
+                        setSheetsUrlInput('');
+                        if (showToast) showToast('Cleared Google Sheets URL. Switched to Local Mode.', 'info');
+                      }}
+                      className="px-3.5 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold transition-colors cursor-pointer"
+                    >
+                      Disconnect (Use Local)
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Excel Direct Exports */}
+              <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-stone-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                    Microsoft Excel Direct Backup
+                  </span>
+                  <span className="text-[10px] text-stone-500 font-medium">Native .csv format</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => exportTransactionsToExcel(transactions)}
+                    className="p-3 rounded-xl bg-white hover:bg-stone-100 border border-stone-200 text-stone-800 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
+                  >
+                    <Download className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Download Ledger (Excel)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => exportSellersToExcel(sellers)}
+                    className="p-3 rounded-xl bg-white hover:bg-stone-100 border border-stone-200 text-stone-800 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
+                  >
+                    <Download className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Download Retailers (Excel)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Setup Guide */}
+              <div className="p-4 rounded-2xl bg-orange-50/60 border border-orange-200/80 text-xs text-orange-950 space-y-2">
+                <div className="font-bold flex items-center gap-1.5 text-orange-900">
+                  <Globe className="w-4 h-4" />
+                  <span>How to create your Google Sheet in 2 minutes:</span>
+                </div>
+                <ol className="list-decimal list-inside space-y-1 text-orange-900/90 leading-relaxed pl-1">
+                  <li>Create a new sheet at <strong>sheets.new</strong></li>
+                  <li>Click <strong>Extensions &gt; Apps Script</strong></li>
+                  <li>Copy and paste all code from <code className="bg-orange-100 px-1 py-0.5 rounded font-mono font-bold">google-sheets-backend.js</code> in this project</li>
+                  <li>Click <strong>Deploy &gt; New deployment &gt; Web app</strong> (Set "Who has access" to <strong>Anyone</strong>)</li>
+                  <li>Copy the Web App URL and paste it into the field above!</li>
+                </ol>
+              </div>
+
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 px-6 border-t border-stone-200 bg-stone-50 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setShowDatabaseModal(false)}
+                className="px-5 py-2.5 rounded-full bg-stone-900 hover:bg-black text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+              >
+                Close
               </button>
             </div>
 

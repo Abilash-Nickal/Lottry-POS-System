@@ -23,6 +23,8 @@ pnpm-debug.log*
 # Editor & OS files
 .DS_Store
 Thumbs.db
+*.timestamp-*.mjs
+*.timestamp-*.js
 .idea/
 .vscode/
 *.suo
