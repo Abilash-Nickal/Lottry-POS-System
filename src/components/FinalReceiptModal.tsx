@@ -1,7 +1,8 @@
-import React from 'react';
-import { X, Printer, Receipt } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Printer, Receipt, Smartphone } from 'lucide-react';
 import { CompletedSlip } from '../types';
 import { formatLKR } from '../utils/formatters';
+import { SendBillMessageModal } from './SendBillMessageModal';
 
 interface FinalReceiptModalProps {
   completedSlip: CompletedSlip | null;
@@ -14,6 +15,8 @@ export const FinalReceiptModal: React.FC<FinalReceiptModalProps> = ({
   onClose,
   canPrint = true
 }) => {
+  const [showMsgModal, setShowMsgModal] = useState(false);
+
   if (!completedSlip) return null;
 
   const creditsOld = completedSlip.creditsOld ?? completedSlip.previousCredit ?? 0;
@@ -254,18 +257,29 @@ export const FinalReceiptModal: React.FC<FinalReceiptModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-full bg-white hover:bg-stone-100 text-stone-700 text-xs font-bold border border-stone-300 transition-colors"
+              className="px-5 py-2.5 rounded-full bg-white hover:bg-stone-100 text-stone-700 text-xs font-bold border border-stone-300 transition-colors cursor-pointer"
             >
               Close
             </button>
+
+            {/* Send to Phone (WhatsApp / SMS) */}
+            <button
+              type="button"
+              onClick={() => setShowMsgModal(true)}
+              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-xs font-black shadow-md flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+            >
+              <Smartphone className="w-4 h-4" />
+              <span>Send to Phone</span>
+            </button>
+
             {canPrint ? (
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="px-6 py-2.5 bg-[#18181B] hover:bg-black text-white rounded-full text-xs font-black shadow-md flex items-center gap-1.5 transition-all"
+                className="px-6 py-2.5 bg-[#18181B] hover:bg-black text-white rounded-full text-xs font-black shadow-md flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
               >
                 <Printer className="w-4 h-4" />
-                Print Bluetooth Slip
+                <span>Print Bluetooth Slip</span>
               </button>
             ) : (
               <span className="px-4 py-2.5 rounded-full bg-stone-100 text-stone-400 text-xs font-bold border border-stone-200 italic">
@@ -276,6 +290,16 @@ export const FinalReceiptModal: React.FC<FinalReceiptModalProps> = ({
         </div>
 
       </div>
+
+      {/* Send Message Modal */}
+      {showMsgModal && completedSlip.seller && completedSlip.assistant && (
+        <SendBillMessageModal
+          seller={completedSlip.seller}
+          assistant={completedSlip.assistant}
+          completedSlip={completedSlip}
+          onClose={() => setShowMsgModal(false)}
+        />
+      )}
     </div>
   );
 };

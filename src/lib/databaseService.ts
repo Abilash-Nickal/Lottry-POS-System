@@ -9,11 +9,11 @@ import {
 
 // Storage keys for persistent local storage
 const STORAGE_KEYS = {
-  SELLERS: 'LOTTERY_POS_SELLERS_V1',
-  ASSISTANTS: 'LOTTERY_POS_ASSISTANTS_V1',
-  BRANDS: 'LOTTERY_POS_BRANDS_V1',
-  TRANSACTIONS: 'LOTTERY_POS_TRANSACTIONS_V1',
-  ADMIN_PROFILE: 'LOTTERY_POS_ADMIN_PROFILE_V1',
+  SELLERS: 'LOTTERY_POS_SELLERS_V2',
+  ASSISTANTS: 'LOTTERY_POS_ASSISTANTS_V2',
+  BRANDS: 'LOTTERY_POS_BRANDS_V2',
+  TRANSACTIONS: 'LOTTERY_POS_TRANSACTIONS_V2',
+  ADMIN_PROFILE: 'LOTTERY_POS_ADMIN_PROFILE_V2',
   SHEETS_URL: 'LOTTERY_POS_GOOGLE_SHEETS_URL'
 };
 
@@ -63,6 +63,20 @@ function setLocalData<T>(key: string, data: T): void {
 
 // Initialize default data into LocalStorage if not present
 function initializeLocalStorageIfEmpty() {
+  // Clear legacy mock V1 caches if any
+  const legacyKeys = [
+    'LOTTERY_POS_SELLERS_V1',
+    'LOTTERY_POS_ASSISTANTS_V1',
+    'LOTTERY_POS_BRANDS_V1',
+    'LOTTERY_POS_TRANSACTIONS_V1',
+    'LOTTERY_POS_ADMIN_PROFILE_V1'
+  ];
+  legacyKeys.forEach(k => {
+    try {
+      localStorage.removeItem(k);
+    } catch (_) {}
+  });
+
   if (!localStorage.getItem(STORAGE_KEYS.SELLERS)) {
     setLocalData(STORAGE_KEYS.SELLERS, INITIAL_SELLERS);
   }
@@ -311,6 +325,35 @@ export async function dbRecordTransaction(txn: Transaction, newCredit: number) {
     });
   } catch (err) {
     console.error('dbRecordTransaction error:', err);
+  }
+}
+
+export async function dbResetSellerTransactions(sellerId: string, resetCredit: number, remainingTxns: Transaction[]) {
+  try {
+    // 1. Update Transactions in LocalStorage
+    setLocalData(STORAGE_KEYS.TRANSACTIONS, remainingTxns);
+
+    // 2. Update Seller Credit in LocalStorage
+    const currentSellers = getLocalData<Seller[]>(STORAGE_KEYS.SELLERS, INITIAL_SELLERS);
+    const updatedSellers = currentSellers.map(s => {
+      if (s.id === sellerId) {
+        return {
+          ...s,
+          currentCredit: resetCredit,
+          isFrozen: resetCredit > s.creditLimit
+        };
+      }
+      return s;
+    });
+    setLocalData(STORAGE_KEYS.SELLERS, updatedSellers);
+
+    // 3. Post updated seller credit to Google Sheets
+    const seller = updatedSellers.find(s => s.id === sellerId);
+    if (seller) {
+      postToGoogleSheets('upsertSeller', seller);
+    }
+  } catch (err) {
+    console.error('dbResetSellerTransactions error:', err);
   }
 }
 

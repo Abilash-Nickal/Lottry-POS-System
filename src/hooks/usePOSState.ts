@@ -22,7 +22,8 @@ import {
   dbRecordTransaction, 
   dbUpsertSeller,
   getAdminProfile,
-  dbUpsertAdminProfile
+  dbUpsertAdminProfile,
+  dbResetSellerTransactions
 } from '../lib/supabaseService';
 
 /**
@@ -55,10 +56,10 @@ export function usePOSState() {
     fetchAllData()
       .then((data) => {
         if (!isMounted) return;
-        if (data.sellers.length > 0) setSellers(data.sellers);
-        if (data.assistants.length > 0) setAssistants(data.assistants);
-        if (data.brands.length > 0) setBrands(data.brands);
-        if (data.transactions.length > 0) setTransactions(data.transactions);
+        if (data.sellers) setSellers(data.sellers);
+        if (data.assistants) setAssistants(data.assistants);
+        if (data.brands) setBrands(data.brands);
+        if (data.transactions !== undefined) setTransactions(data.transactions);
         if (data.adminProfile) setAdminProfile(data.adminProfile);
       })
       .catch((err) => {
@@ -451,6 +452,62 @@ export function usePOSState() {
     showToast(`${sObj?.name} is now ${!sObj?.isFrozen ? 'FROZEN' : 'ACTIVE'}`, 'info');
   };
 
+  // Case 13: Reset current bill / order for selected seller
+  const handleResetSellerOrder = () => {
+    if (!currentSeller) return;
+
+    const thisSellerTxns = transactions.filter(t => t.sellerId === currentSeller.id);
+
+    // Revert assistant cash & winning voucher collections logged in these transactions
+    let cashToRevert = 0;
+    let winningToRevert = 0;
+    thisSellerTxns.forEach(t => {
+      if (t.actionType === '3.5 CASH' || (t.typeLabel && t.typeLabel.includes('Cash'))) {
+        cashToRevert += Math.abs(t.deltaCredit);
+      } else if (t.actionType === '3.3 WINNING' || (t.typeLabel && t.typeLabel.includes('Winning'))) {
+        winningToRevert += Math.abs(t.deltaCredit);
+      }
+    });
+
+    if (cashToRevert > 0 || winningToRevert > 0) {
+      setAssistants(prev => prev.map(a => {
+        if (a.id === currentAssistant.id) {
+          return {
+            ...a,
+            cashInHand: Math.max(0, a.cashInHand - cashToRevert),
+            winningVouchers: Math.max(0, a.winningVouchers - winningToRevert)
+          };
+        }
+        return a;
+      }));
+    }
+
+    // Filter out transactions for this seller
+    const remainingTxns = transactions.filter(t => t.sellerId !== currentSeller.id);
+    setTransactions(remainingTxns);
+
+    // Revert seller debt to original balance (or 0)
+    const sorted = [...thisSellerTxns].reverse();
+    const prevCredit = sorted.length > 0 ? (sorted[0].previousCredit || 0) : 0;
+    const resetCredit = prevCredit >= 0 ? prevCredit : 0;
+
+    setSellers(prev => prev.map(s => {
+      if (s.id === currentSeller.id) {
+        return {
+          ...s,
+          currentCredit: resetCredit,
+          isFrozen: resetCredit > s.creditLimit ? true : false
+        };
+      }
+      return s;
+    }));
+
+    // Update LocalStorage and Google Sheets
+    dbResetSellerTransactions(currentSeller.id, resetCredit, remainingTxns);
+
+    showToast(`Bill reset! All order items cleared for ${currentSeller.name}`, 'info');
+  };
+
   return {
     // Navigation & Roles
     currentStep,
@@ -512,6 +569,7 @@ export function usePOSState() {
     handleConfirmNonWinning,
     handleConfirmCash,
     openAllInOneReceipt,
-    handleToggleFreeze
+    handleToggleFreeze,
+    handleResetSellerOrder
   };
 }

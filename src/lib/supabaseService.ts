@@ -18,7 +18,8 @@ export {
   exportSellersToExcel,
   exportAssistantsToExcel,
   getAdminProfile,
-  dbUpsertAdminProfile
+  dbUpsertAdminProfile,
+  dbResetSellerTransactions
 } from './databaseService';
 
 // Re-export seedDatabaseIfEmpty as a no-op / compatibility helper

@@ -25,7 +25,9 @@ import {
   CreditCard,
   Cloud,
   CheckCircle2,
-  Loader2
+  Loader2,
+  MessageSquare,
+  Smartphone
 } from 'lucide-react';
 import { Seller, Assistant, Transaction, LotteryBrand, ForwardDay } from '../types';
 import { formatLKR, getForward7Days } from '../utils/formatters';
@@ -35,6 +37,7 @@ import { ReturnModal } from './ActionModals/ReturnModal';
 import { WinningModal } from './ActionModals/WinningModal';
 import { NonWinningModal } from './ActionModals/NonWinningModal';
 import { CashModal } from './ActionModals/CashModal';
+import { SendBillMessageModal } from './SendBillMessageModal';
 import { dbUpsertSeller } from '../lib/databaseService';
 
 interface SellerWorkspaceProps {
@@ -84,6 +87,7 @@ interface SellerWorkspaceProps {
     cashAmount: number;
     reference: string;
   }) => void;
+  onResetOrder?: () => void;
   activeActionId?: '3.1' | '3.2' | '3.3' | '3.4' | '3.5';
   onSelectActionId?: (id: '3.1' | '3.2' | '3.3' | '3.4' | '3.5') => void;
 }
@@ -100,6 +104,7 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
   onConfirmWinning,
   onConfirmNonWinning,
   onConfirmCash,
+  onResetOrder,
   activeActionId,
   onSelectActionId
 }) => {
@@ -120,12 +125,27 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
   const [cloudSavedAt, setCloudSavedAt] = useState<string | null>(null);
   const [showSyncSuccess, setShowSyncSuccess] = useState(false);
 
+  // Message & Reset Bill States
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+
   const handleDirectPrint = () => {
     onOpenFinalReceipt();
     // Allow modal to render then trigger print
     setTimeout(() => {
       window.print();
     }, 350);
+  };
+
+  const handleResetBill = () => {
+    setSaleTicketCounts({});
+    setSaleDispatchNote('');
+    setCloudSavedAt(null);
+    setShowSyncSuccess(false);
+    setShowResetConfirm(false);
+    if (onResetOrder) {
+      onResetOrder();
+    }
   };
 
   const handleConfirmOrderCloud = async () => {
@@ -466,9 +486,21 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
                 </div>
               </div>
 
-              <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-[#FAF0E9] text-[#D64933] border border-[#F4DEC9] font-mono">
-                {sessionBreakdown.grossPacks} Packs
-              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowResetConfirm(true)}
+                  className="px-2.5 py-1 rounded-xl bg-white hover:bg-rose-50 text-rose-600 hover:text-rose-700 border border-rose-200 text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
+                  title="Reset current bill and clear all items"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Reset Bill</span>
+                </button>
+
+                <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-[#FAF0E9] text-[#D64933] border border-[#F4DEC9] font-mono">
+                  {sessionBreakdown.grossPacks} Packs
+                </span>
+              </div>
             </div>
 
             {/* Big Prominent Full Bill Amount Highlight */}
@@ -684,20 +716,108 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
               )}
             </button>
 
-            {/* Print 80mm Dispatch Slip Button */}
-            <button
-              type="button"
-              onClick={handleDirectPrint}
-              className="w-full py-3 px-5 rounded-2xl bg-white hover:bg-[#F5EFEB] text-[#26201D] font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2.5 border border-[#E6DDD4] shadow-xs transition-all cursor-pointer active:scale-[0.99]"
-            >
-              <Printer className="w-4 h-4 text-[#D64933]" />
-              <span>Print 80mm Dispatch Slip</span>
-            </button>
+            {/* Row of Secondary Actions: Print 80mm Slip, Send Message to Phone, Reset Bill */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {/* Print 80mm Dispatch Slip Button */}
+              <button
+                type="button"
+                onClick={handleDirectPrint}
+                className="py-3 px-3 rounded-2xl bg-white hover:bg-[#F5EFEB] text-[#26201D] font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 border border-[#E6DDD4] shadow-xs transition-all cursor-pointer active:scale-[0.99]"
+                title="Print 80mm POS Thermal Slip"
+              >
+                <Printer className="w-4 h-4 text-[#D64933]" />
+                <span>Print 80mm Slip</span>
+              </button>
+
+              {/* Send Bill to Customer Phone (WhatsApp / SMS) */}
+              <button
+                type="button"
+                onClick={() => setShowMessageModal(true)}
+                className="py-3 px-3 rounded-2xl bg-white hover:bg-[#F0FDF4] text-emerald-700 font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 border border-emerald-200 shadow-xs transition-all cursor-pointer active:scale-[0.99]"
+                title="Send bill via WhatsApp or SMS to customer mobile"
+              >
+                <Smartphone className="w-4 h-4 text-emerald-600" />
+                <span>Message to Phone</span>
+              </button>
+
+              {/* Reset Bill Button */}
+              <button
+                type="button"
+                onClick={() => setShowResetConfirm(true)}
+                className="py-3 px-3 rounded-2xl bg-white hover:bg-rose-50 text-rose-600 font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 border border-rose-200 shadow-xs transition-all cursor-pointer active:scale-[0.99]"
+                title="Reset current order and clear bill items"
+              >
+                <RotateCcw className="w-4 h-4 text-rose-500" />
+                <span>Reset Bill</span>
+              </button>
+            </div>
           </div>
 
         </div>
 
       </div>
+
+      {/* ==================================================================== */}
+      {/* RESET ORDER CONFIRMATION MODAL                                       */}
+      {/* ==================================================================== */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-stone-200 space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center">
+              <RotateCcw className="w-6 h-6 text-rose-600" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-lg font-black text-stone-900">Reset Current Order & Bill?</h3>
+              <p className="text-xs text-stone-600 leading-relaxed">
+                This will clear all items (Gross Dispatches, Returns, Winnings, and Cash) for <strong className="text-stone-900">{currentSeller.name}</strong> and reset the bill to zero.
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowResetConfirm(false)}
+                className="px-4 py-2.5 rounded-full border border-stone-300 hover:bg-stone-100 text-stone-700 text-xs font-bold transition-colors cursor-pointer"
+              >
+                Keep Current Bill
+              </button>
+              <button
+                type="button"
+                onClick={handleResetBill}
+                className="px-5 py-2.5 rounded-full bg-rose-600 hover:bg-rose-700 text-white text-xs font-black shadow-md shadow-rose-600/20 transition-all cursor-pointer active:scale-95"
+              >
+                Yes, Reset Bill
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* SEND BILL TO CUSTOMER PHONE MODAL                                    */}
+      {/* ==================================================================== */}
+      {showMessageModal && (
+        <SendBillMessageModal
+          seller={currentSeller}
+          assistant={currentAssistant}
+          onClose={() => setShowMessageModal(false)}
+          sessionData={{
+            grossBill: sessionBreakdown.grossBill,
+            grossPacks: sessionBreakdown.grossPacks,
+            grossTickets: sessionBreakdown.grossTickets,
+            returnRefund: sessionBreakdown.returnRefund,
+            returnPacks: sessionBreakdown.returnPacks,
+            winningOffset: sessionBreakdown.winningOffset,
+            winningCount: sessionBreakdown.winningCount,
+            nonWinningReimburse: sessionBreakdown.nonWinningReimburse,
+            nonWinningStubs: sessionBreakdown.nonWinningStubs,
+            cashCollected: sessionBreakdown.cashCollected,
+            netBill: sessionBreakdown.netBill,
+            prevBalance: sessionBreakdown.prevBalance,
+            postOrderDebt: currentCredit,
+            availableCredit: availableCredit
+          }}
+        />
+      )}
 
       {/* ==================================================================== */}
       {/* 4. POP-UP MODAL 1: TICKET SALE & DISPATCH                            */}

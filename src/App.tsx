@@ -97,7 +97,8 @@ export default function LotteryDistributorPOS() {
     handleConfirmNonWinning,
     handleConfirmCash,
     openAllInOneReceipt,
-    handleToggleFreeze
+    handleToggleFreeze,
+    handleResetSellerOrder
   } = usePOSState();
 
   // Active Action Tab for Master-Detail Split View (3.1 to 3.5)
@@ -235,6 +236,7 @@ export default function LotteryDistributorPOS() {
             onConfirmWinning={handleConfirmWinning}
             onConfirmNonWinning={handleConfirmNonWinning}
             onConfirmCash={handleConfirmCash}
+            onResetOrder={handleResetSellerOrder}
             activeActionId={selectedActionId}
             onSelectActionId={setSelectedActionId}
           />

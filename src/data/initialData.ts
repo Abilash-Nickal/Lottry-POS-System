@@ -33,10 +33,10 @@ export const INITIAL_BRANDS: LotteryBrand[] = [
 ];
 
 export const INITIAL_ASSISTANTS: Assistant[] = [
-  { id: 'ast1', name: 'Nuwan Perera', shortName: 'Nuwan Perera', username: 'nuwan', defaultPass: '1234', phone: '+94 77 123 4567', route: 'Colombo Fort Route', cashInHand: 42500, winningVouchers: 12400, totalOrdersToday: 8, avatarBg: 'bg-orange-500 text-white', avatarId: 'char-02' },
-  { id: 'ast2', name: 'Mohamed Rizwan', shortName: 'Mohamed Rizwan', username: 'rizwan', defaultPass: '1234', phone: '+94 71 987 6543', route: 'Kollupitiya Route', cashInHand: 18200, winningVouchers: 8500, totalOrdersToday: 5, avatarBg: 'bg-emerald-600 text-white', avatarId: 'char-10' },
-  { id: 'ast3', name: 'Mohamed Rizwan', shortName: 'Mohamed Rizwan', username: 'rizwan2', defaultPass: '1234', phone: '+94 76 555 4321', route: 'Maradana Route', cashInHand: 31000, winningVouchers: 14200, totalOrdersToday: 7, avatarBg: 'bg-blue-600 text-white', avatarId: 'char-07' },
-  { id: 'ast4', name: 'Mohamed Rizwan', shortName: 'Mohamed Rizwan', username: 'rizwan3', defaultPass: '1234', phone: '+94 75 444 3322', route: 'Dehiwala Route', cashInHand: 24800, winningVouchers: 6900, totalOrdersToday: 6, avatarBg: 'bg-purple-600 text-white', avatarId: 'char-04' },
+  { id: 'ast1', name: 'Nuwan Perera', shortName: 'Nuwan Perera', username: 'nuwan', defaultPass: '1234', phone: '+94 77 123 4567', route: 'Colombo Fort Route', cashInHand: 0, winningVouchers: 0, totalOrdersToday: 0, avatarBg: 'bg-orange-500 text-white', avatarId: 'char-02' },
+  { id: 'ast2', name: 'Mohamed Rizwan', shortName: 'Mohamed Rizwan', username: 'rizwan', defaultPass: '1234', phone: '+94 71 987 6543', route: 'Kollupitiya Route', cashInHand: 0, winningVouchers: 0, totalOrdersToday: 0, avatarBg: 'bg-emerald-600 text-white', avatarId: 'char-10' },
+  { id: 'ast3', name: 'Mohamed Rizwan', shortName: 'Mohamed Rizwan', username: 'rizwan2', defaultPass: '1234', phone: '+94 76 555 4321', route: 'Maradana Route', cashInHand: 0, winningVouchers: 0, totalOrdersToday: 0, avatarBg: 'bg-blue-600 text-white', avatarId: 'char-07' },
+  { id: 'ast4', name: 'Mohamed Rizwan', shortName: 'Mohamed Rizwan', username: 'rizwan3', defaultPass: '1234', phone: '+94 75 444 3322', route: 'Dehiwala Route', cashInHand: 0, winningVouchers: 0, totalOrdersToday: 0, avatarBg: 'bg-purple-600 text-white', avatarId: 'char-04' },
 ];
 
 export const INITIAL_SELLERS: Seller[] = [
@@ -48,7 +48,7 @@ export const INITIAL_SELLERS: Seller[] = [
     location: 'Maharagama Junction', 
     tier: 'Tier A', 
     creditLimit: 350000, 
-    currentCredit: 245000, 
+    currentCredit: 0, 
     assignedAssistant: 'ast4',
     isFrozen: false,
     avatarId: 'char-06'
@@ -61,7 +61,7 @@ export const INITIAL_SELLERS: Seller[] = [
     location: 'Nugegoda Supermarket Arcade', 
     tier: 'Tier A', 
     creditLimit: 250000, 
-    currentCredit: 242000, 
+    currentCredit: 0, 
     assignedAssistant: 'ast4',
     isFrozen: false,
     avatarId: 'char-01'
@@ -74,7 +74,7 @@ export const INITIAL_SELLERS: Seller[] = [
     location: 'Dehiwala Station Rd', 
     tier: 'Tier B', 
     creditLimit: 120000, 
-    currentCredit: 65400, 
+    currentCredit: 0, 
     assignedAssistant: 'ast2',
     isFrozen: false,
     avatarId: 'char-14'
@@ -87,9 +87,9 @@ export const INITIAL_SELLERS: Seller[] = [
     location: 'Moratuwa Bus Stand', 
     tier: 'Tier B', 
     creditLimit: 90000, 
-    currentCredit: 95000, 
+    currentCredit: 0, 
     assignedAssistant: 'ast2',
-    isFrozen: true,
+    isFrozen: false,
     avatarId: 'char-08'
   },
   { 
@@ -100,7 +100,7 @@ export const INITIAL_SELLERS: Seller[] = [
     location: 'Kiribathgoda Cross Rd', 
     tier: 'Tier B', 
     creditLimit: 150000, 
-    currentCredit: 38200, 
+    currentCredit: 0, 
     assignedAssistant: 'ast3',
     isFrozen: false,
     avatarId: 'char-12'
@@ -113,7 +113,7 @@ export const INITIAL_SELLERS: Seller[] = [
     location: 'Peliyagoda Market', 
     tier: 'Tier A', 
     creditLimit: 400000, 
-    currentCredit: 185000, 
+    currentCredit: 0, 
     assignedAssistant: 'ast1',
     isFrozen: false,
     avatarId: 'char-07'
@@ -126,159 +126,11 @@ export const INITIAL_SELLERS: Seller[] = [
     location: 'Negombo Town Hall', 
     tier: 'Tier A', 
     creditLimit: 100000, 
-    currentCredit: 10000, 
+    currentCredit: 0, 
     assignedAssistant: 'ast1',
     isFrozen: false,
     avatarId: 'char-09'
   }
 ];
 
-export const INITIAL_TRANSACTIONS: Transaction[] = [
-  {
-    id: 'TXN-9021',
-    date: '2026-10-15 10:14 AM',
-    sellerId: 's7',
-    sellerName: 'City Center Lotto',
-    assistantId: 'ast1',
-    assistantName: 'Kasun Bandara',
-    actionType: '3.1 SALE',
-    typeLabel: 'Draw Tickets Sale (10/15/2026)',
-    deltaCredit: 3000,
-    previousCredit: 10000,
-    newCredit: 13000,
-    notes: '10/15/2026: 200 tix Govisetha (2000.00) & 100 tix Mahajana (1000.00)',
-    details: {
-      category: 'Draw Sale Tickets',
-      targetDay: '10/15/2026',
-      items: [
-        { dateStr: '10/15/2026', brandName: 'Govisetha', packs: 2, tickets: 200, rate: 10.00, subtotal: 2000 },
-        { dateStr: '10/15/2026', brandName: 'Mahajana Sampatha', packs: 1, tickets: 100, rate: 10.00, subtotal: 1000 }
-      ],
-      totalPacks: 3,
-      totalTickets: 300,
-      totalBill: 3000
-    }
-  },
-  {
-    id: 'TXN-9022',
-    date: '2026-10-15 11:20 AM',
-    sellerId: 's7',
-    sellerName: 'City Center Lotto',
-    assistantId: 'ast1',
-    assistantName: 'Kasun Bandara',
-    actionType: '3.3 WINNING',
-    typeLabel: 'Return by Winning Tickets',
-    deltaCredit: -1000,
-    previousCredit: 13000,
-    newCredit: 12000,
-    notes: 'Envelope #ENV-301 | Return by Winning: 1000.00',
-    details: {
-      envelopeNo: 'ENV-301',
-      ticketCount: 'Assorted Prize Vouchers',
-      totalWinningOffset: 1000
-    }
-  },
-  {
-    id: 'TXN-9023',
-    date: '2026-10-15 01:15 PM',
-    sellerId: 's7',
-    sellerName: 'City Center Lotto',
-    assistantId: 'ast1',
-    assistantName: 'Kasun Bandara',
-    actionType: '3.2 RETURN',
-    typeLabel: 'Returning Unsold Packs',
-    deltaCredit: -10000,
-    previousCredit: 12000,
-    newCredit: 2000,
-    notes: 'Returning unsold pre-draw packs: 10,000.00',
-    details: {
-      returnDate: '10/15/2026',
-      returnItems: [
-        { brandName: 'Govisetha', packs: 10, rate: 10.00, subtotal: 10000 }
-      ],
-      totalPacks: 10,
-      totalRefund: 10000
-    }
-  },
-  {
-    id: 'TXN-9024',
-    date: '2026-10-15 03:40 PM',
-    sellerId: 's7',
-    sellerName: 'City Center Lotto',
-    assistantId: 'ast1',
-    assistantName: 'Kasun Bandara',
-    actionType: '3.5 CASH',
-    typeLabel: 'Cash Paying Settlement',
-    deltaCredit: -15220,
-    previousCredit: 17220,
-    newCredit: 2000,
-    notes: 'Cash paying: LKR 15,220.00 route collection',
-    details: {
-      cashAmount: 15220,
-      reference: 'Direct Cash Payment'
-    }
-  },
-  {
-    id: 'TXN-7664',
-    date: '2026-10-16 12:36 AM',
-    sellerId: 's1',
-    sellerName: 'Saman Stores & Communications',
-    assistantId: 'ast1',
-    assistantName: 'Kasun Bandara',
-    actionType: '3.2 RETURN',
-    typeLabel: 'Pack Return (Pre-draw / Unsold)',
-    deltaCredit: -3350,
-    previousCredit: 252600,
-    newCredit: 249250,
-    notes: 'Unsold pre-draw return | Batch: SN-901 to SN-902 | Returned 1 pack Govisetha',
-    details: {
-      returnDate: 'Day 1 (Fri, Oct 16)',
-      returnItems: [
-        { brandName: 'Govisetha', packs: 1, rate: 33.50, subtotal: 3350 }
-      ],
-      reason: 'Unsold pre-draw return (Draw Cutoff)',
-      batchRef: 'SN-901 to SN-902',
-      totalPacks: 1,
-      totalRefund: 3350
-    }
-  },
-  {
-    id: 'TXN-9020',
-    date: '2026-10-15 09:30 AM',
-    sellerId: 's3',
-    sellerName: 'Gamini Agency & Bakery',
-    assistantId: 'ast2',
-    assistantName: 'Nuwan Perera',
-    actionType: '3.5 CASH',
-    typeLabel: 'Direct Cash Payment',
-    deltaCredit: -15000,
-    previousCredit: 80400,
-    newCredit: 65400,
-    notes: 'Morning route cash collection against ledger balance',
-    details: {
-      cashAmount: 15000,
-      reference: 'Morning route cash collection against ledger balance',
-      assistantName: 'Nuwan Perera'
-    }
-  },
-  {
-    id: 'TXN-9019',
-    date: '2026-10-14 04:45 PM',
-    sellerId: 's1',
-    sellerName: 'Saman Stores & Communications',
-    assistantId: 'ast4',
-    assistantName: 'Chaminda Raj',
-    actionType: '3.3 WINNING',
-    typeLabel: 'Winning Ticket Payout Offset',
-    deltaCredit: -12400,
-    previousCredit: 257400,
-    newCredit: 245000,
-    notes: 'Verified 42 winning Govisetha vouchers in Envelope #ENV-884',
-    details: {
-      envelopeNo: 'ENV-884',
-      ticketCount: '42 Assorted Tickets',
-      totalWinningOffset: 12400,
-      breakdown: { tier40: '35', tier100: '10', tier500: '10', customPrize: '5000' }
-    }
-  }
-];
+export const INITIAL_TRANSACTIONS: Transaction[] = [];
