@@ -222,7 +222,7 @@ export default function LotteryDistributorPOS() {
   // --------------------------------------------------------------------------
   if (currentStep === 'SELLER_WORKSPACE' && currentSeller) {
     return (
-      <div className="h-screen overflow-hidden bg-transparent text-gray-900 p-2 sm:p-2.5 font-sans selection:bg-orange-500/20 selection:text-orange-950 flex flex-col">
+      <div className="h-screen overflow-hidden bg-transparent text-gray-900 p-2 sm:p-3 md:p-4 font-sans selection:bg-orange-500/20 selection:text-orange-950 flex flex-col">
         <div className="max-w-[1680px] w-full mx-auto flex-1 min-h-0 flex flex-col overflow-hidden">
           <SellerWorkspace
             currentSeller={currentSeller}
@@ -237,8 +237,6 @@ export default function LotteryDistributorPOS() {
             onConfirmNonWinning={handleConfirmNonWinning}
             onConfirmCash={handleConfirmCash}
             onResetOrder={handleResetSellerOrder}
-            activeActionId={selectedActionId}
-            onSelectActionId={setSelectedActionId}
           />
         </div>
 

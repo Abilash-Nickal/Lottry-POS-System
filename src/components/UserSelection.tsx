@@ -48,7 +48,7 @@ export const UserSelection: React.FC<UserSelectionProps> = ({
           <path d="M9 13.5V6a2 2 0 1 1 4 0v7.5" />
           <path d="M13 10a2 2 0 1 1 4 0v4a7 7 0 1 1-14 0v-2a2 2 0 1 1 4 0v2" />
         </svg>
-        <span>Shift Authentication Step 1 of 2</span>
+        <span>Select Profile</span>
       </div>
 
       {/* 2. Heading */}
@@ -58,8 +58,7 @@ export const UserSelection: React.FC<UserSelectionProps> = ({
 
       {/* 3. Subheading */}
       <p className="text-[#6E645D] text-xs sm:text-sm max-w-xl mx-auto font-medium text-center mt-2.5 leading-relaxed">
-        Choose active operator profile to unlock the route inventory ledger,
-        <br className="hidden sm:inline" /> live sales scanner, and depot cash drawers.
+        Choose your operator profile to begin
       </p>
 
       {/* 4. Segmented Selector Pill (Matching Screenshot) */}

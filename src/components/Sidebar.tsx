@@ -52,7 +52,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const isAdmin = currentStep === 'ADMIN_DASHBOARD';
 
   return (
-    <aside className="w-72 glass-panel text-gray-800 flex flex-col justify-between p-6 shrink-0 shadow-sm relative z-30 select-none min-h-screen border-r border-gray-200/80 backdrop-blur-2xl">
+    <aside className="w-72 glass-panel text-gray-800 hidden lg:flex flex-col justify-between p-6 shrink-0 shadow-sm relative z-30 select-none min-h-screen border-r border-gray-200/80 backdrop-blur-2xl">
       
       {/* Top Branding Section */}
       <div className="space-y-8">

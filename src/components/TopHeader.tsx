@@ -42,10 +42,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   let title = 'Retailer Ledger & Dispatch';
   let subtitle = `${currentSeller?.name} • ${currentSeller?.location}`;
 
-  if (currentStep === 'ADMIN_DASHBOARD') {
-    title = 'Distribution Head Console';
-    subtitle = 'Wholesale pricing, ceiling controls & field reconciliation';
-  } else if (currentStep === 'SELLER_SELECT') {
+  if (currentStep === 'SELLER_SELECT') {
     title = 'Retailer Directory';
     subtitle = `Assigned Route: ${currentAssistant?.route}`;
   } else if (currentStep === 'SALE_CATEGORY_SELECT' || currentStep === 'SALE_DATE_AND_TICKETS') {

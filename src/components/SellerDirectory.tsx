@@ -113,7 +113,7 @@ export const SellerDirectory: React.FC<SellerDirectoryProps> = ({
           {/* Search Input */}
           <input
             type="text"
-            placeholder="Search by retailer name, code, street, or license..."
+            placeholder="Search retailers..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="flex-1 bg-transparent py-3 sm:py-3.5 pr-2 text-xs sm:text-sm font-medium text-[#1E1915] placeholder-[#B5A99D] focus:outline-none min-w-0"

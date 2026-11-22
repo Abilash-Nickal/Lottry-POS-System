@@ -236,4 +236,20 @@ code, pre, .font-mono {
   outline: none;
 }
 
+/* Responsive sidebar utility */
+@media (max-width: 1023px) {
+  .sidebar-desktop-only {
+    display: none;
+  }
+}
+
+/* Thin scrollbar for lists */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: #D6CABE;
+}
+
 

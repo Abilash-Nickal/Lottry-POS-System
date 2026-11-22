@@ -691,15 +691,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
           <button
-            onClick={() => setAvatarPickerTarget('admin')}
-            className="px-4 py-2.5 rounded-full bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-700 text-xs sm:text-sm font-bold flex items-center gap-2 shadow-xs transition-colors cursor-pointer"
-            title="Change Head Administrator Avatar Character"
-          >
-            <Sparkles className="w-4 h-4 text-orange-600" />
-            <span>Character Avatar</span>
-          </button>
-
-          <button
             onClick={() => setShowDatabaseModal(true)}
             className={`px-4 py-2.5 rounded-full border text-xs sm:text-sm font-bold flex items-center gap-2 shadow-xs transition-colors cursor-pointer ${
               sheetsUrlInput 
@@ -722,6 +713,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       </div>
 
+      {/* Tablet & Mobile Tab Navigation Bar (Visible when Desktop Sidebar is Hidden) */}
+      <div className="flex lg:hidden overflow-x-auto gap-2 p-1.5 bg-white/90 backdrop-blur-md rounded-2xl border border-gray-200/90 shadow-xs custom-scrollbar">
+        {[
+          { id: 'overview', label: 'Overview' },
+          { id: 'sellers', label: 'Sellers' },
+          { id: 'assistants', label: 'Assistants' },
+          { id: 'pricing', label: 'Pricing' },
+          { id: 'ledger', label: 'Audit Trail' }
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => onTabChange && onTabChange(tab.id as any)}
+            className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+              adminTab === tab.id
+                ? 'bg-[#D64933] text-white shadow-xs font-black'
+                : 'text-stone-700 hover:bg-stone-100'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       {/* ==================================================================== */}
       {/* SECTION 0: OVERVIEW & KPIS                                           */}
       {/* ==================================================================== */}
@@ -731,25 +745,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <div className="bg-white rounded-3xl p-6 shadow-sm border border-stone-200/70 space-y-1 hover:shadow-md transition-shadow">
               <span className="text-xs text-stone-400 font-bold uppercase tracking-wider">Total Market Credit</span>
               <div className="text-2xl sm:text-3xl font-extrabold text-amber-600 tracking-tight">{formatLKR(totalCreditOutstanding)}</div>
-              <span className="text-xs text-stone-400">Across {sellers.length} registered sellers</span>
+              <span className="text-xs text-stone-400">{sellers.length} sellers registered</span>
             </div>
 
             <div className="bg-white rounded-3xl p-6 shadow-sm border border-stone-200/70 space-y-1 hover:shadow-md transition-shadow">
               <span className="text-xs text-stone-400 font-bold uppercase tracking-wider">Total Cash with Reps</span>
               <div className="text-2xl sm:text-3xl font-extrabold text-emerald-600 tracking-tight">{formatLKR(totalCashHeldByAssistants)}</div>
-              <span className="text-xs text-stone-400">Held by {assistants.length} field assistants</span>
+              <span className="text-xs text-stone-400">{assistants.length} field reps</span>
             </div>
 
             <div className="bg-white rounded-3xl p-6 shadow-sm border border-stone-200/70 space-y-1 hover:shadow-md transition-shadow">
               <span className="text-xs text-stone-400 font-bold uppercase tracking-wider">Winning Vouchers Held</span>
               <div className="text-2xl sm:text-3xl font-extrabold text-stone-900 tracking-tight">{formatLKR(totalWinningVouchers)}</div>
-              <span className="text-xs text-stone-400">Depot redemption claim batch</span>
+              <span className="text-xs text-stone-400">Claim batch pending</span>
             </div>
 
             <div className="bg-white rounded-3xl p-6 shadow-sm border border-stone-200/70 space-y-1 hover:shadow-md transition-shadow">
               <span className="text-xs text-stone-400 font-bold uppercase tracking-wider">Overdue Accounts</span>
               <div className="text-2xl sm:text-3xl font-extrabold text-rose-600 tracking-tight">{sellersOverdue} Retailers</div>
-              <span className="text-xs text-stone-400">At or exceeding credit limit</span>
+              <span className="text-xs text-stone-400">Exceeding credit limit</span>
             </div>
           </div>
 
@@ -763,10 +777,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <Store className="w-5 h-5" />
               </div>
               <h4 className="font-extrabold text-lg text-gray-900 group-hover:text-[#D64933] transition-colors">
-                1. Sellers Management
+                Sellers Management
               </h4>
               <p className="text-xs text-gray-500 font-medium">
-                Add sellers, assign Wholesale Tier A vs Retail Tier B, and adjust credit limits (LKR).
+                Manage retailers, assign tiers & adjust credit limits.
               </p>
               <div className="text-xs font-bold text-[#D64933] flex items-center gap-1 pt-1">
                 <span>Manage {sellers.length} Sellers</span>
@@ -782,10 +796,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <Users className="w-5 h-5" />
               </div>
               <h4 className="font-extrabold text-lg text-gray-900 group-hover:text-[#D64933] transition-colors">
-                2. Assistant Accounts & Security
+                Assistant Accounts
               </h4>
               <p className="text-xs text-gray-500 font-medium">
-                Create & edit field assistants, route assignments, and set/reset login PINs.
+                Manage field assistants, routes & reset PINs.
               </p>
               <div className="text-xs font-bold text-[#D64933] flex items-center gap-1 pt-1">
                 <span>Manage {assistants.length} Assistants</span>
@@ -801,10 +815,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <Tag className="w-5 h-5" />
               </div>
               <h4 className="font-extrabold text-lg text-gray-900 group-hover:text-[#D64933] transition-colors">
-                3. Ticket Catalog & Tier Pricing
+                Ticket Catalog & Pricing
               </h4>
               <p className="text-xs text-gray-500 font-medium">
-                Daily Draw vs. Scratch Cards, set retail face values, and configure Tier A/B wholesale margins.
+                Set ticket face values and Tier A/B wholesale pricing.
               </p>
               <div className="text-xs font-bold text-[#D64933] flex items-center gap-1 pt-1">
                 <span>Manage {brands.length} Brands</span>

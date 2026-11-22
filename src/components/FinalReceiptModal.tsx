@@ -41,7 +41,7 @@ export const FinalReceiptModal: React.FC<FinalReceiptModalProps> = ({
             </div>
             <div>
               <h3 className="text-sm sm:text-base font-extrabold text-stone-900 flex items-center gap-1.5">
-                All-In-One Wholesale Receipt Slip
+                Receipt Slip
               </h3>
               <p className="text-[11px] text-stone-500 font-mono">
                 SLIP #{completedSlip.id} • {completedSlip.date}
@@ -90,7 +90,7 @@ export const FinalReceiptModal: React.FC<FinalReceiptModalProps> = ({
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Receipt Type:</span>
-                <strong className="text-slate-900">All-In-One Consolidated Settlement</strong>
+                <strong className="text-slate-900">Consolidated Settlement</strong>
               </div>
             </div>
 
@@ -250,7 +250,7 @@ export const FinalReceiptModal: React.FC<FinalReceiptModalProps> = ({
         {/* Modal Bottom Controls: NO EDIT BUTTON, strictly Close & Print Bluetooth Slip */}
         <div className="p-4 sm:p-5 border-t border-stone-200 bg-stone-50 rounded-b-3xl flex items-center justify-between gap-3">
           <div className="text-[11px] text-stone-500 font-mono hidden sm:block">
-            Official All-In-One Wholesale Slip
+            Official Receipt
           </div>
 
           <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">

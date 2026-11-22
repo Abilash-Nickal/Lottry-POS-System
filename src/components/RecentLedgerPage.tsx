@@ -74,7 +74,7 @@ export const RecentLedgerPage: React.FC<RecentLedgerPageProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <span className="bg-[#FAF0E9] text-[#D68A64] border border-[#F4DEC9] text-[10px] font-black px-3 py-0.5 rounded-full uppercase tracking-wider">
-                Full Audit Trail
+                Audit Trail
               </span>
               <span className="text-xs text-[#7F7266] font-medium">
                 Retailer: <strong className="text-[#26201D]">{currentSeller.name}</strong>
@@ -98,7 +98,7 @@ export const RecentLedgerPage: React.FC<RecentLedgerPageProps> = ({
       </div>
 
       {/* 2. STATS ROW */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Stat 1: Current Debt */}
         <div className="bg-[#FDF2F0] border border-[#F9C9C2] rounded-2xl p-4">
           <span className="text-[10px] font-bold text-[#D64933] uppercase tracking-wider block">
@@ -181,7 +181,7 @@ export const RecentLedgerPage: React.FC<RecentLedgerPageProps> = ({
       {/* 4. FULL TRANSACTION AUDIT TABLE */}
       <div className="figma-card rounded-3xl p-6 border border-[#E6DDD4] bg-[#FAF8F5] shadow-xs space-y-4">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-left text-xs min-w-[800px]">
             <thead className="text-[#7F7266] font-bold uppercase tracking-wider text-[10px] border-b border-[#E6DDD4] pb-3">
               <tr>
                 <th className="py-3 px-3">TXN Reference</th>

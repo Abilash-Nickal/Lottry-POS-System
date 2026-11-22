@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { 
   ArrowLeft, 
-  Store, 
   MapPin, 
   Phone, 
   Lock, 
@@ -19,14 +18,10 @@ import {
   Printer, 
   Receipt, 
   History, 
-  ChevronRight, 
   Sparkles, 
-  ShieldCheck,
-  CreditCard,
   Cloud,
   CheckCircle2,
   Loader2,
-  MessageSquare,
   Smartphone
 } from 'lucide-react';
 import { Seller, Assistant, Transaction, LotteryBrand, ForwardDay } from '../types';
@@ -88,8 +83,6 @@ interface SellerWorkspaceProps {
     reference: string;
   }) => void;
   onResetOrder?: () => void;
-  activeActionId?: '3.1' | '3.2' | '3.3' | '3.4' | '3.5';
-  onSelectActionId?: (id: '3.1' | '3.2' | '3.3' | '3.4' | '3.5') => void;
 }
 
 export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
@@ -104,9 +97,7 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
   onConfirmWinning,
   onConfirmNonWinning,
   onConfirmCash,
-  onResetOrder,
-  activeActionId,
-  onSelectActionId
+  onResetOrder
 }) => {
   // Toggle for full-page ledger view
   const [showLedgerPage, setShowLedgerPage] = useState(false);
@@ -350,7 +341,7 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
       {/* ---------------------------------------------------------------- */}
       {/* 1. TOP CUSTOMER / SELLER BANNER (MATCHES USER IMAGE EXACTLY)       */}
       {/* ---------------------------------------------------------------- */}
-      <div className="rounded-2xl p-3.5 sm:p-4 shadow-xs flex flex-col xl:flex-row xl:items-center justify-between gap-3.5 border border-[#E6DDD4] bg-[#FAF8F5]/90 backdrop-blur-md shrink-0">
+      <div className="rounded-2xl p-3.5 sm:p-4 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3.5 border border-[#E6DDD4] bg-[#FAF8F5]/90 backdrop-blur-md shrink-0">
         
         {/* RETAILER INFO */}
         <div className="space-y-1.5">
@@ -466,7 +457,7 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
       <div className="flex-1 min-h-0 flex flex-col items-center justify-start py-2">
         
         {/* THE ORDERING ELEMENTS LIST CARD (EXACTLY LIKE USER IMAGE) */}
-        <div className="max-w-xl w-full space-y-3">
+        <div className="max-w-2xl w-full space-y-3">
           
           <div className="rounded-3xl border border-[#E6DDD4] bg-[#FAF8F5]/90 backdrop-blur-md p-4 sm:p-5 shadow-xs space-y-3.5">
             
@@ -478,10 +469,10 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
                 </div>
                 <div>
                   <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-stone-900 block leading-tight">
-                    Full Order & Bill Breakdown
+                    Order & Bill Breakdown
                   </h3>
                   <span className="text-[11px] text-[#7F7266] font-medium">
-                    Live Session Reconciliation
+                    Session Breakdown
                   </span>
                 </div>
               </div>
@@ -523,13 +514,13 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
             {/* ALL ORDERING ELEMENTS LIST (THE 5 ACTION BUTTONS) */}
             <div className="space-y-2 text-xs">
               <span className="text-[10px] font-black uppercase tracking-wider text-stone-400 block pl-0.5">
-                All Ordering Elements
+                Order Elements
               </span>
 
               {/* 1. Gross Dispatch */}
               <div 
                 onClick={() => setActiveModal('SALE')}
-                className="flex items-center justify-between p-3 rounded-2xl bg-white hover:bg-[#F5EFEB] border border-[#E6DDD4] cursor-pointer transition-all shadow-xs group select-none"
+                className="flex items-center justify-between p-3 min-h-[48px] rounded-2xl bg-white hover:bg-[#F5EFEB] border border-[#E6DDD4] cursor-pointer transition-all shadow-xs group select-none"
               >
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-[#FAF0E9] border border-[#F4DEC9] flex items-center justify-center shrink-0">
@@ -555,7 +546,7 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
               {/* 2. Unsold Pack Returns */}
               <div 
                 onClick={() => setActiveModal('RETURN')}
-                className="flex items-center justify-between p-3 rounded-2xl bg-white hover:bg-[#F5EFEB] border border-[#E6DDD4] cursor-pointer transition-all shadow-xs group select-none"
+                className="flex items-center justify-between p-3 min-h-[48px] rounded-2xl bg-white hover:bg-[#F5EFEB] border border-[#E6DDD4] cursor-pointer transition-all shadow-xs group select-none"
               >
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-[#F0F9FF] border border-[#BAE6FD] flex items-center justify-center shrink-0">
@@ -581,7 +572,7 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
               {/* 3. Winning Tickets Offset */}
               <div 
                 onClick={() => setActiveModal('WINNING')}
-                className="flex items-center justify-between p-3 rounded-2xl bg-white hover:bg-[#F5EFEB] border border-[#E6DDD4] cursor-pointer transition-all shadow-xs group select-none"
+                className="flex items-center justify-between p-3 min-h-[48px] rounded-2xl bg-white hover:bg-[#F5EFEB] border border-[#E6DDD4] cursor-pointer transition-all shadow-xs group select-none"
               >
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-[#FEFCE8] border border-[#FEF08A] flex items-center justify-center shrink-0">
@@ -607,7 +598,7 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
               {/* 4. Non-Winning Drawback */}
               <div 
                 onClick={() => setActiveModal('NON_WINNING')}
-                className="flex items-center justify-between p-3 rounded-2xl bg-white hover:bg-[#F5EFEB] border border-[#E6DDD4] cursor-pointer transition-all shadow-xs group select-none"
+                className="flex items-center justify-between p-3 min-h-[48px] rounded-2xl bg-white hover:bg-[#F5EFEB] border border-[#E6DDD4] cursor-pointer transition-all shadow-xs group select-none"
               >
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-[#FDF2F8] border border-[#FBCFE8] flex items-center justify-center shrink-0">
@@ -633,7 +624,7 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
               {/* 5. Cash Payment */}
               <div 
                 onClick={() => setActiveModal('CASH')}
-                className="flex items-center justify-between p-3 rounded-2xl bg-white hover:bg-[#F5EFEB] border border-[#E6DDD4] cursor-pointer transition-all shadow-xs group select-none"
+                className="flex items-center justify-between p-3 min-h-[48px] rounded-2xl bg-white hover:bg-[#F5EFEB] border border-[#E6DDD4] cursor-pointer transition-all shadow-xs group select-none"
               >
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-[#F0FDF4] border border-[#BBF7D0] flex items-center justify-center shrink-0">
@@ -716,13 +707,13 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
               )}
             </button>
 
-            {/* Row of Secondary Actions: Print 80mm Slip, Send Message to Phone, Reset Bill */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {/* Row of Secondary Actions: Print 80mm Slip, Send Message to Phone */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {/* Print 80mm Dispatch Slip Button */}
               <button
                 type="button"
                 onClick={handleDirectPrint}
-                className="py-3 px-3 rounded-2xl bg-white hover:bg-[#F5EFEB] text-[#26201D] font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 border border-[#E6DDD4] shadow-xs transition-all cursor-pointer active:scale-[0.99]"
+                className="py-3 px-3 rounded-2xl bg-white hover:bg-[#F5EFEB] text-[#26201D] font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 border border-[#E6DDD4] shadow-xs transition-all cursor-pointer active:scale-[0.99] min-h-[46px]"
                 title="Print 80mm POS Thermal Slip"
               >
                 <Printer className="w-4 h-4 text-[#D64933]" />
@@ -733,22 +724,11 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
               <button
                 type="button"
                 onClick={() => setShowMessageModal(true)}
-                className="py-3 px-3 rounded-2xl bg-white hover:bg-[#F0FDF4] text-emerald-700 font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 border border-emerald-200 shadow-xs transition-all cursor-pointer active:scale-[0.99]"
+                className="py-3 px-3 rounded-2xl bg-white hover:bg-[#F0FDF4] text-emerald-700 font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 border border-emerald-200 shadow-xs transition-all cursor-pointer active:scale-[0.99] min-h-[46px]"
                 title="Send bill via WhatsApp or SMS to customer mobile"
               >
                 <Smartphone className="w-4 h-4 text-emerald-600" />
                 <span>Message to Phone</span>
-              </button>
-
-              {/* Reset Bill Button */}
-              <button
-                type="button"
-                onClick={() => setShowResetConfirm(true)}
-                className="py-3 px-3 rounded-2xl bg-white hover:bg-rose-50 text-rose-600 font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 border border-rose-200 shadow-xs transition-all cursor-pointer active:scale-[0.99]"
-                title="Reset current order and clear bill items"
-              >
-                <RotateCcw className="w-4 h-4 text-rose-500" />
-                <span>Reset Bill</span>
               </button>
             </div>
           </div>
@@ -842,7 +822,7 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
                     </span>
                   </div>
                   <p className="text-xs text-stone-300">
-                    Allocating lottery packs to <strong className="text-white">{currentSeller.name}</strong>
+                    Allocating packs to <strong className="text-white">{currentSeller.name}</strong>
                   </p>
                 </div>
               </div>
@@ -871,7 +851,7 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
                   }`}
                 >
                   <Calendar className={`w-4 h-4 ${saleCategory === 'daily' ? 'text-[#D64933]' : 'text-stone-400'}`} />
-                  <span>Daily Draw Lotteries (100-pack)</span>
+                  <span>Daily Draw (100-pack)</span>
                 </button>
 
                 <button
@@ -884,7 +864,7 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
                   }`}
                 >
                   <Sparkles className={`w-4 h-4 ${saleCategory === 'scratch' ? 'text-[#D64933]' : 'text-stone-400'}`} />
-                  <span>Instant Scratch Cards</span>
+                  <span>Scratch Cards</span>
                 </button>
               </div>
 
