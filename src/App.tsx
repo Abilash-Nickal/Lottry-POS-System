@@ -131,7 +131,7 @@ export default function LotteryDistributorPOS() {
   if (isAuthPhase) {
     return (
       <div 
-        className="min-h-screen bg-[#F7F4F0] flex flex-col justify-center items-center py-5 sm:py-8 lg:py-10 px-3 sm:px-6 antialiased text-[#26201D] selection:bg-[#D68A64]/30"
+        className="min-h-screen bg-transparent flex flex-col justify-center items-center py-5 sm:py-8 lg:py-10 px-3 sm:px-6 antialiased text-[#26201D] selection:bg-[#D68A64]/30"
         style={{ fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" }}
       >
         {/* Google Fonts: Plus Jakarta Sans for Headline, Body, and Label */}
@@ -200,7 +200,7 @@ export default function LotteryDistributorPOS() {
   // Once a retailer is selected, it launches the full dashboard UI.
   if (currentStep === 'SELLER_SELECT') {
     return (
-      <div className="h-screen w-screen overflow-hidden bg-[#EFE8E1] text-[#26201D] flex flex-col font-sans selection:bg-orange-500/20 selection:text-orange-950">
+      <div className="h-screen w-screen overflow-hidden bg-transparent text-[#26201D] flex flex-col font-sans selection:bg-orange-500/20 selection:text-orange-950">
         <SellerDirectory
           sellers={sellers}
           currentAssistant={currentAssistant}

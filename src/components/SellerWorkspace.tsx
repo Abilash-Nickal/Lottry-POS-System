@@ -350,7 +350,7 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
       {/* ---------------------------------------------------------------- */}
       {/* 1. TOP CUSTOMER / SELLER BANNER (MATCHES USER IMAGE EXACTLY)       */}
       {/* ---------------------------------------------------------------- */}
-      <div className="rounded-2xl p-3.5 sm:p-4 shadow-xs flex flex-col xl:flex-row xl:items-center justify-between gap-3.5 border border-[#E6DDD4] bg-[#FAF8F5] shrink-0">
+      <div className="rounded-2xl p-3.5 sm:p-4 shadow-xs flex flex-col xl:flex-row xl:items-center justify-between gap-3.5 border border-[#E6DDD4] bg-[#FAF8F5]/90 backdrop-blur-md shrink-0">
         
         {/* RETAILER INFO */}
         <div className="space-y-1.5">
@@ -468,7 +468,7 @@ export const SellerWorkspace: React.FC<SellerWorkspaceProps> = ({
         {/* THE ORDERING ELEMENTS LIST CARD (EXACTLY LIKE USER IMAGE) */}
         <div className="max-w-xl w-full space-y-3">
           
-          <div className="rounded-3xl border border-[#E6DDD4] bg-[#FAF8F5] p-4 sm:p-5 shadow-xs space-y-3.5">
+          <div className="rounded-3xl border border-[#E6DDD4] bg-[#FAF8F5]/90 backdrop-blur-md p-4 sm:p-5 shadow-xs space-y-3.5">
             
             {/* Header */}
             <div className="flex items-center justify-between">

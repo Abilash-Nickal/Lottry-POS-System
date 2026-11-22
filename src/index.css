@@ -12,16 +12,43 @@
 body {
   margin: 0;
   padding: 0;
-  background-color: #EFE8E1;
-  background-image: 
-    radial-gradient(circle at 10% 10%, rgba(249, 115, 22, 0.08) 0%, transparent 40%),
-    radial-gradient(circle at 90% 15%, rgba(214, 138, 100, 0.09) 0%, transparent 45%),
-    radial-gradient(circle at 50% 85%, rgba(227, 179, 158, 0.08) 0%, transparent 50%),
-    linear-gradient(180deg, #F5EFEB 0%, #EFE8E1 50%, #E6DDD4 100%);
-  background-attachment: fixed;
+  background-color: #F5EFEB;
   color: #26201D;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  position: relative;
+  min-height: 100vh;
+}
+
+/* Background image with small amount of blur to fit current UI */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-image: url('/background/lottery-bg.png');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  filter: blur(4px);
+  transform: scale(1.03);
+  z-index: -2;
+  pointer-events: none;
+}
+
+/* Subtle warm overlay to preserve UI contrast and readability */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(245, 239, 235, 0.22);
+  z-index: -1;
+  pointer-events: none;
 }
 
 ::selection {
