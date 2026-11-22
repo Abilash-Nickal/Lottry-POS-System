@@ -160,7 +160,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [isTestingUrl, setIsTestingUrl] = useState(false);
   const [copiedScript, setCopiedScript] = useState(false);
 
-  // Generator & Selector for individual seller's last 10 purchase full history
+  // Selector for individual seller's purchase history (real ledger transactions only)
   const displayedPurchases = useMemo(() => {
     if (!historySeller) return [];
 
@@ -170,78 +170,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
 
     const purchasesOnly = sellerTxns.filter(t => t.actionType.includes('SALE') || t.deltaCredit > 0);
-    if (purchasesOnly.length >= 10) {
-      return purchasesOnly.slice(0, 10);
-    }
-
-    // Supplement with realistic historical orders if this seller has fewer than 10 transactions in memory
-    const needed = 10 - purchasesOnly.length;
-    const assistant = assistants.find(a => a.id === historySeller.assignedAssistant) || assistants[0] || { shortName: 'Mohamed Rizwan' };
-    const rate = historySeller.tier === 'Tier A' ? 85 : 88;
-    const brandList = brands.length > 0 ? brands : [
-      { name: 'Govisetha', color: 'from-emerald-500 to-green-600' },
-      { name: 'Mahajana Sampatha', color: 'from-blue-500 to-indigo-600' },
-      { name: 'Ada Kotipathi', color: 'from-amber-500 to-orange-600' },
-      { name: 'Shanida Wasanawa', color: 'from-purple-500 to-indigo-600' },
-      { name: 'Lagna Wasanawa', color: 'from-rose-500 to-pink-600' },
-      { name: 'Supiri Dhana Sampatha', color: 'from-red-500 to-amber-600' }
-    ];
-
-    const now = new Date();
-    const generated: Transaction[] = [];
-    let runningCredit = historySeller.currentCredit;
-
-    for (let i = 0; i < needed; i++) {
-      const daysAgo = purchasesOnly.length + i + 1;
-      const orderDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000 - i * 3600000);
-      const dateStr = orderDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) +
-        ' ' + orderDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-
-      const b1 = brandList[(i * 2) % brandList.length];
-      const b2 = brandList[(i * 2 + 1) % brandList.length];
-      const packs1 = 2 + (i % 3);
-      const packs2 = 1 + ((i + 1) % 3);
-      const tickets1 = packs1 * 100;
-      const tickets2 = packs2 * 100;
-      const subtotal1 = tickets1 * rate;
-      const subtotal2 = tickets2 * rate;
-      const totalBill = subtotal1 + subtotal2;
-      const totalPacks = packs1 + packs2;
-      const totalTickets = tickets1 + tickets2;
-
-      const prevCredit = Math.max(0, runningCredit - totalBill);
-      const orderNewCredit = runningCredit;
-      runningCredit = prevCredit;
-
-      const txnId = `TXN-${8500 - (i * 37 + 11)}`;
-
-      generated.push({
-        id: txnId,
-        date: dateStr,
-        sellerId: historySeller.id,
-        sellerName: historySeller.name,
-        assistantId: historySeller.assignedAssistant,
-        assistantName: assistant.shortName || 'Mohamed Rizwan',
-        actionType: '3.1 SALE',
-        typeLabel: i === 0 ? "Today's Daily Draw Dispatch" : `Batch Order Day -${daysAgo}`,
-        deltaCredit: totalBill,
-        previousCredit: prevCredit,
-        newCredit: orderNewCredit,
-        notes: `Delivered ${totalPacks} packs (${totalTickets} tickets) to shop counter`,
-        details: {
-          totalBill: totalBill,
-          totalPacks: totalPacks,
-          totalTickets: totalTickets,
-          items: [
-            { brandName: b1.name, packs: packs1, tickets: tickets1, rate: rate, subtotal: subtotal1 },
-            { brandName: b2.name, packs: packs2, tickets: tickets2, rate: rate, subtotal: subtotal2 }
-          ]
-        }
-      });
-    }
-
-    return [...purchasesOnly, ...generated].slice(0, 10);
-  }, [historySeller, transactions, historyFilter, brands, assistants]);
+    return purchasesOnly.slice(0, 10);
+  }, [historySeller, transactions, historyFilter]);
 
   // 2. Assistants Modals
   const [showAddAssistantModal, setShowAddAssistantModal] = useState(false);

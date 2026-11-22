@@ -35,8 +35,8 @@ export const INITIAL_BRANDS: LotteryBrand[] = [
 export const INITIAL_ASSISTANTS: Assistant[] = [
   { id: 'ast1', name: 'Nuwan Perera', shortName: 'Nuwan Perera', username: 'nuwan', defaultPass: '1234', phone: '+94 77 123 4567', route: 'Colombo Fort Route', cashInHand: 0, winningVouchers: 0, totalOrdersToday: 0, avatarBg: 'bg-orange-500 text-white', avatarId: 'char-02' },
   { id: 'ast2', name: 'Mohamed Rizwan', shortName: 'Mohamed Rizwan', username: 'rizwan', defaultPass: '1234', phone: '+94 71 987 6543', route: 'Kollupitiya Route', cashInHand: 0, winningVouchers: 0, totalOrdersToday: 0, avatarBg: 'bg-emerald-600 text-white', avatarId: 'char-10' },
-  { id: 'ast3', name: 'Mohamed Rizwan', shortName: 'Mohamed Rizwan', username: 'rizwan2', defaultPass: '1234', phone: '+94 76 555 4321', route: 'Maradana Route', cashInHand: 0, winningVouchers: 0, totalOrdersToday: 0, avatarBg: 'bg-blue-600 text-white', avatarId: 'char-07' },
-  { id: 'ast4', name: 'Mohamed Rizwan', shortName: 'Mohamed Rizwan', username: 'rizwan3', defaultPass: '1234', phone: '+94 75 444 3322', route: 'Dehiwala Route', cashInHand: 0, winningVouchers: 0, totalOrdersToday: 0, avatarBg: 'bg-purple-600 text-white', avatarId: 'char-04' },
+  { id: 'ast3', name: 'Kasun Bandara', shortName: 'Kasun Bandara', username: 'kasun', defaultPass: '1234', phone: '+94 76 555 4321', route: 'Maradana Route', cashInHand: 0, winningVouchers: 0, totalOrdersToday: 0, avatarBg: 'bg-blue-600 text-white', avatarId: 'char-07' },
+  { id: 'ast4', name: 'Dinesh Kumara', shortName: 'Dinesh Kumara', username: 'dinesh', defaultPass: '1234', phone: '+94 75 444 3322', route: 'Dehiwala Route', cashInHand: 0, winningVouchers: 0, totalOrdersToday: 0, avatarBg: 'bg-purple-600 text-white', avatarId: 'char-04' },
 ];
 
 export const INITIAL_SELLERS: Seller[] = [

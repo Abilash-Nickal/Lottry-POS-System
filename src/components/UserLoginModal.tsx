@@ -3,10 +3,8 @@ import {
   ArrowLeft, 
   Grid3X3, 
   IdCard, 
-  Wifi, 
   ArrowRight, 
-  CreditCard, 
-  Fingerprint, 
+  Lock, 
   Database, 
   AlertTriangle,
   Eye,
@@ -36,15 +34,10 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
   const [pin, setPin] = useState('');
   
   // Username / Password State
-  const [username, setUsername] = useState(
-    pendingUserRole === 'admin' ? 'admin' : (currentAst?.username || 'assistant')
-  );
-  const [password, setPassword] = useState(
-    pendingUserRole === 'admin' ? 'admin123' : (currentAst?.defaultPass || '1234')
-  );
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const [nfcSuccessAnimation, setNfcSuccessAnimation] = useState(false);
 
   // Keypad Handlers
   const handleDigitPress = (digit: string) => {
@@ -63,13 +56,9 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
     setError('');
   };
 
-  const handleNfcSimulate = () => {
-    setNfcSuccessAnimation(true);
-    setPin('1234');
-    setTimeout(() => {
-      setNfcSuccessAnimation(false);
-      verifyPin('1234');
-    }, 300);
+  const handleBackspace = () => {
+    setError('');
+    setPin(prev => prev.slice(0, -1));
   };
 
   const verifyPin = (pinToTest: string) => {
@@ -77,7 +66,7 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
       if (pinToTest === '1234' || pinToTest === '0000') {
         onSuccess('admin');
       } else {
-        setError('Invalid Supervisor PIN (Demo: 1234)');
+        setError('Incorrect Supervisor PIN');
         setTimeout(() => setPin(''), 600);
       }
     } else {
@@ -85,7 +74,7 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
       if (pinToTest === targetPass || pinToTest === '1234') {
         onSuccess('assistant', currentAst?.id);
       } else {
-        setError(`Invalid PIN! Demo PIN is ${targetPass}`);
+        setError('Incorrect PIN. Please try again.');
         setTimeout(() => setPin(''), 600);
       }
     }
@@ -93,28 +82,34 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
 
   const handleUnlockClick = () => {
     if (authMode === 'pin') {
-      if (pin.length === 0) {
-        const targetPin = pendingUserRole === 'admin' ? '1234' : (currentAst?.defaultPass || '1234');
-        setPin(targetPin);
-        verifyPin(targetPin);
+      if (pin.length < 4) {
+        setError('Please enter your 4-digit PIN');
       } else {
         verifyPin(pin);
       }
     } else {
       // Validate Username and Password
+      if (!username.trim() || !password.trim()) {
+        setError('Please enter both username and password');
+        return;
+      }
+
       if (pendingUserRole === 'admin') {
-        if (username === 'admin' && (password === 'admin123' || password === '1234')) {
+        if (username.trim() === 'admin' && (password === 'admin123' || password === '1234')) {
           onSuccess('admin');
         } else {
-          setError('Invalid Admin Credentials (admin / admin123)');
+          setError('Invalid Admin credentials');
         }
       } else {
         const correctUser = currentAst?.username || 'assistant';
         const correctPass = currentAst?.defaultPass || '1234';
-        if ((username === correctUser || username === 'assistant') && (password === correctPass || password === '1234')) {
+        if (
+          (username.trim().toLowerCase() === correctUser.toLowerCase() || username.trim().toLowerCase() === 'assistant') && 
+          password === correctPass
+        ) {
           onSuccess('assistant', currentAst?.id);
         } else {
-          setError(`Invalid credentials (Demo: ${correctUser} / ${correctPass})`);
+          setError('Invalid username or password');
         }
       }
     }
@@ -224,10 +219,10 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
               })}
             </div>
 
-            {/* NFC Reader Badge */}
+            {/* Security Badge */}
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FAF0E9] border border-[#F4DEC9] text-[#D68A64] text-[11px] font-semibold">
-              <Wifi className={`w-3 h-3 text-[#D68A64] ${nfcSuccessAnimation ? 'animate-bounce text-[#9E2A1E]' : ''}`} />
-              <span>NFC Ready - Tap badge or enter 4-digit PIN</span>
+              <Lock className="w-3 h-3 text-[#D68A64]" />
+              <span>Enter 4-digit security PIN to unlock</span>
             </div>
 
             {/* Numeric Keypad */}
@@ -243,7 +238,7 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
                 </button>
               ))}
 
-              {/* Row 4: CLR, 0, Badge Icon */}
+              {/* Row 4: CLR, 0, Backspace */}
               <button
                 type="button"
                 onClick={handleClear}
@@ -262,11 +257,11 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
 
               <button
                 type="button"
-                onClick={handleNfcSimulate}
-                className="py-2.5 rounded-xl bg-[#FAF0E9] hover:bg-[#F5DEC9] active:scale-95 text-[#D68A64] hover:text-[#9E2A1E] flex items-center justify-center transition-all cursor-pointer border border-[#F4DEC9] min-h-[46px]"
-                title="Simulate NFC Badge Tap"
+                onClick={handleBackspace}
+                className="py-2.5 rounded-xl bg-[#F2ECE4] hover:bg-[#EAE2D8] active:scale-95 text-base font-bold text-[#7F7266] flex items-center justify-center transition-all cursor-pointer min-h-[46px]"
+                title="Backspace"
               >
-                <CreditCard className="w-5 h-5" />
+                ⌫
               </button>
             </div>
           </div>
@@ -293,9 +288,6 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
                 <label className="text-[11px] font-bold text-[#7F7266] uppercase tracking-wider">
                   Password
                 </label>
-                <span className="text-[11px] text-[#9F9184] font-mono">
-                  Default: {pendingUserRole === 'admin' ? 'admin123' : (currentAst?.defaultPass || '1234')}
-                </span>
               </div>
               <div className="relative">
                 <input
@@ -329,24 +321,11 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
 
       </div>
 
-      {/* Footer Links under the Card */}
-      <div className="mt-3 flex items-center justify-between text-[11px] font-semibold text-[#7F7266] px-1">
-        <button
-          type="button"
-          onClick={() => {
-            setAuthMode('pin');
-            setPin('1234');
-            setTimeout(() => verifyPin('1234'), 150);
-          }}
-          className="inline-flex items-center gap-1.5 hover:text-[#26201D] transition-colors cursor-pointer"
-        >
-          <Fingerprint className="w-3.5 h-3.5 text-[#D68A64]" />
-          <span>Emergency Override</span>
-        </button>
-
+      {/* Footer System Status under the Card */}
+      <div className="mt-3 flex items-center justify-center text-[11px] font-semibold text-[#7F7266] px-1">
         <div className="inline-flex items-center gap-1.5 text-[#9F9184]">
           <Database className="w-3.5 h-3.5 text-emerald-600" />
-          <span>Local SQLite Active</span>
+          <span>Local & Cloud Database Secure</span>
         </div>
       </div>
 

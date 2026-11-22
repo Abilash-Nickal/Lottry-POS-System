@@ -15,16 +15,8 @@ export const UserSelection: React.FC<UserSelectionProps> = ({
   onSelectAdmin
 }) => {
   const [selectedTab, setSelectedTab] = useState<'assistants' | 'supervisor'>('assistants');
-
-  // Fallback demo assistants matching the exact screenshot layout
-  const displayAssistants: Assistant[] = assistants.length > 0 ? assistants.slice(0, 4) : [
-    { id: 'ast1', name: 'Nuwan Perera', shortName: 'Nuwan Perera', username: 'nuwan', defaultPass: '1234', phone: '+94 77 123 4567', route: 'Colombo Fort Route', cashInHand: 42500, winningVouchers: 12400, totalOrdersToday: 8, avatarBg: 'bg-orange-500' },
-    { id: 'ast2', name: 'Mohamed Rizwan', shortName: 'Mohamed Rizwan', username: 'rizwan', defaultPass: '1234', phone: '+94 71 987 6543', route: 'Kollupitiya Route', cashInHand: 18200, winningVouchers: 8500, totalOrdersToday: 5, avatarBg: 'bg-emerald-500' },
-    { id: 'ast3', name: 'Mohamed Rizwan', shortName: 'Mohamed Rizwan', username: 'rizwan2', defaultPass: '1234', phone: '+94 76 555 4321', route: 'Maradana Route', cashInHand: 31000, winningVouchers: 14200, totalOrdersToday: 7, avatarBg: 'bg-blue-500' },
-    { id: 'ast4', name: 'Mohamed Rizwan', shortName: 'Mohamed Rizwan', username: 'rizwan3', defaultPass: '1234', phone: '+94 75 444 3322', route: 'Dehiwala Route', cashInHand: 24800, winningVouchers: 6900, totalOrdersToday: 6, avatarBg: 'bg-purple-500' },
-  ];
-
-  const [selectedId, setSelectedId] = useState<string>(displayAssistants[0]?.id || 'ast1');
+  const displayAssistants: Assistant[] = assistants;
+  const [selectedId, setSelectedId] = useState<string>(displayAssistants[0]?.id || '');
 
   const handleCardClick = (astId: string) => {
     setSelectedId(astId);
